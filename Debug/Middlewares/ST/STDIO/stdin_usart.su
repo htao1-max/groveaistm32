@@ -1,0 +1,2 @@
+../Middlewares/ST/STDIO/stdin_usart.c:33:6:stdin_init	4	static
+../Middlewares/ST/STDIO/stdin_usart.c:41:5:_read	32	static
