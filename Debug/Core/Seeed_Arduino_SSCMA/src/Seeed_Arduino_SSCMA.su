@@ -1,0 +1,26 @@
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:27:7:char* strnstr_custom(const char*, const char*, size_t)	40	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:52:13:void reset_pin(GPIO_TypeDef*, uint16_t)	16	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:62:6:bool SSCMA_Init_I2C(SSCMA_t*, I2C_HandleTypeDef*, GPIO_TypeDef*, uint16_t, uint16_t, uint32_t)	24	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:83:6:bool SSCMA_Init_UART(SSCMA_t*, UART_HandleTypeDef*, GPIO_TypeDef*, uint16_t, uint32_t)	24	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:103:5:int SSCMA_Write(SSCMA_t*, const char*, int)	24	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:118:5:int SSCMA_Read(SSCMA_t*, char*, int)	24	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:133:5:int SSCMA_Available(SSCMA_t*)	16	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:147:13:void i2c_cmd(SSCMA_t*, uint8_t, uint8_t, uint16_t, uint8_t*)	296	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:170:12:int i2c_available(SSCMA_t*)	40	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:185:12:int i2c_read(SSCMA_t*, char*, int)	48	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:207:12:int i2c_write(SSCMA_t*, const char*, int)	40	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:225:12:int wait_response(SSCMA_t*, int, const char*, uint32_t)	56	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:280:13:void parse_event(SSCMA_t*, const char*)	16	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:286:5:int SSCMA_Invoke(SSCMA_t*, int, bool, bool)	96	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:306:7:char* SSCMA_GetID(SSCMA_t*, bool)	80	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:326:7:char* SSCMA_GetName(SSCMA_t*, bool)	88	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:345:7:char* SSCMA_GetInfo(SSCMA_t*, bool)	88	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:363:5:int SSCMA_CleanActions(SSCMA_t*)	80	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:375:5:int SSCMA_SaveJPEG(SSCMA_t*)	80	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:387:6:bool SSCMA_SetRxBuffer(SSCMA_t*, uint32_t)	16	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:404:6:bool SSCMA_SetTxBuffer(SSCMA_t*, uint32_t)	16	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:421:6:void SSCMA_Fetch(SSCMA_t*, ResponseCallback)	40	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:467:5:int SSCMA_GetWiFi(SSCMA_t*, wifi_t*)	16	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:472:5:int SSCMA_GetMQTT(SSCMA_t*, mqtt_t*)	16	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:476:5:int SSCMA_SetWiFiStatus(SSCMA_t*, wifi_status_t*)	16	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:480:5:int SSCMA_SetMQTTStatus(SSCMA_t*, mqtt_status_t*)	16	static

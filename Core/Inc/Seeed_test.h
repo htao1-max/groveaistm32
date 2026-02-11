@@ -8,7 +8,7 @@
 #ifndef INC_SEEED_TEST_H_
 #define INC_SEEED_TEST_H_
 
-#include "Seeed_Arduino_SSCMA.h"
+#include <Seeed_Arduino_SSCMA1.h>
 
 // 全局SSCMA句柄
 extern sscma_handle_t g_ai_handle;

@@ -22,8 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stdio.h"
-#include <Seeed_Arduino_SSCMA.h>
-#include "Seeed_test.h"
+#include "Seeed_Arduino_SSCMA.h"  // Changed from Arduino version to STM32 version
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,6 +51,9 @@ uint8_t Buffer[25] = {0};
 uint8_t Space[] = " - ";
 uint8_t StartMSG[] = "Starting I2C Scanning: \r\n";
 uint8_t EndMSG[] = "Done! \r\n\r\n";
+
+// SSCMA device structure
+SSCMA_t sscma;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -77,7 +79,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	uint8_t i = 0,ret;
+	uint8_t i = 0, ret;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -102,52 +104,112 @@ int main(void)
   MX_I2C2_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-//  HAL_Delay(1000);
-  sscma_app_init_i2c(&hi2c1, SSCMA_DEFAULT_I2C_ADDRESS, 2);
-  HAL_UART_Transmit(&huart4,"Starting main application loop...\r\n",50);
+
+  // Initialize SSCMA with I2C (STM32 version)
+  // Parameters: I2C handle, no reset pin, I2C address, wait delay
+  HAL_UART_Transmit(&huart4, (uint8_t*)"Initializing SSCMA...\r\n", 24, 1000);
+
+  if (SSCMA_Init_I2C(&sscma, &hi2c1, NULL, 0, I2C_ADDRESS, 2)) {
+      HAL_UART_Transmit(&huart4, (uint8_t*)"SSCMA initialized successfully!\r\n", 34, 1000);
+
+      // Get device name
+      char *name = SSCMA_GetName(&sscma, false);
+      if (name) {
+          char msg[64];
+          snprintf(msg, sizeof(msg), "Device Name: %s\r\n", name);
+          HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
+      }
+
+      // Get device ID
+      char *id = SSCMA_GetID(&sscma, false);
+      if (id) {
+          char msg[64];
+          snprintf(msg, sizeof(msg), "Device ID: %s\r\n", id);
+          HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
+      }
+  } else {
+      HAL_UART_Transmit(&huart4, (uint8_t*)"SSCMA initialization failed!\r\n", 31, 1000);
+  }
+
+  HAL_UART_Transmit(&huart4, (uint8_t*)"Starting main application loop...\r\n", 36, 1000);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-
   while (1)
   {
-	  //**************************seeed task*************
-	  sscma_app_task();
-	  HAL_Delay(10);
-
-
-
-//	  HAL_UART_Transmit(&huart4, StartMSG, sizeof(StartMSG), 10000);
-	  HAL_Delay(2000);//why does adding this make the grove ai module work????
-	  printf(StartMSG);
-//	  printf("Hello");
-	    for(i=1; i<128; i++)
-	    {
-//	    	printf("isdevicereadybefore");
-	  	  ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i<<1), 3, 5);
-	  	  if (ret != HAL_OK) /* No ACK Received At That Address */
-	  	  {
-//	  		  HAL_UART_Transmit(&huart4, Space, sizeof(Space), 10000);
-
-	  		  _write(Space);
-	  	  }
-	  	  else if(ret == HAL_OK)
-	  	  {
-	  		  printf("0x%X", i);
-//	  		  HAL_UART_Transmit(&huart4, Buffer, sizeof(Buffer), 10000);
-	  	  }
-	    }
-//	    HAL_UART_Transmit(&huart4, EndMSG, sizeof(EndMSG), 10000);
-	    printf(EndMSG);
-	    HAL_Delay(500);
-
-	  HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_9);
-	  HAL_Delay(500);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+    // Run SSCMA inference
+    if (SSCMA_Invoke(&sscma, 1, false, false) == CMD_OK) {
+        // Process detected boxes (object detection)
+        if (sscma.boxes_count > 0) {
+            char msg[128];
+            snprintf(msg, sizeof(msg), "Detected %d boxes:\r\n", sscma.boxes_count);
+            HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
+
+            for (int j = 0; j < sscma.boxes_count; j++) {
+                snprintf(msg, sizeof(msg),
+                        "  Box %d: x=%d, y=%d, w=%d, h=%d, score=%d, target=%d\r\n",
+                        j,
+                        sscma.boxes[j].x,
+                        sscma.boxes[j].y,
+                        sscma.boxes[j].w,
+                        sscma.boxes[j].h,
+                        sscma.boxes[j].score,
+                        sscma.boxes[j].target);
+                HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
+            }
+        }
+
+        // Process classifications
+        if (sscma.classes_count > 0) {
+            char msg[128];
+            snprintf(msg, sizeof(msg), "Classification: target=%d, score=%d\r\n",
+                    sscma.classes[0].target,
+                    sscma.classes[0].score);
+            HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
+        }
+
+        // Process performance data
+        char perf_msg[128];
+        snprintf(perf_msg, sizeof(perf_msg),
+                "Performance: Preprocess=%dms, Inference=%dms, Postprocess=%dms\r\n",
+                sscma.perf.preprocess,
+                sscma.perf.inference,
+                sscma.perf.postprocess);
+        HAL_UART_Transmit(&huart4, (uint8_t*)perf_msg, strlen(perf_msg), 1000);
+    }
+
+    HAL_Delay(10);
+
+    // I2C Scanner - runs every 2 seconds
+    HAL_Delay(2000);
+    HAL_UART_Transmit(&huart4, StartMSG, sizeof(StartMSG), 10000);
+
+    for(i = 1; i < 128; i++)
+    {
+        ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i<<1), 3, 5);
+        if (ret != HAL_OK) /* No ACK Received At That Address */
+        {
+            HAL_UART_Transmit(&huart4, Space, sizeof(Space), 10000);
+        }
+        else if(ret == HAL_OK)
+        {
+            sprintf((char*)Buffer, "0x%X", i);
+            HAL_UART_Transmit(&huart4, Buffer, strlen((char*)Buffer), 10000);
+        }
+    }
+
+    HAL_UART_Transmit(&huart4, EndMSG, sizeof(EndMSG), 10000);
+    HAL_Delay(500);
+
+    // Toggle LED
+    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_9);
+    HAL_Delay(500);
   }
   /* USER CODE END 3 */
 }
@@ -386,7 +448,8 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-#ifdef USE_FULL_ASSERT
+
+#ifdef  USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
