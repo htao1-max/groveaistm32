@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 #include "Seeed_Arduino_SSCMA.h"
 /* USER CODE END Includes */
@@ -78,6 +79,21 @@ static void MX_I2C1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+static void uart_log(const char *fmt, ...)
+{
+    char buf[160];
+    va_list args;
+    int prefix = snprintf(buf, sizeof(buf), "[%010lu ms] ", HAL_GetTick());
+    va_start(args, fmt);
+    int msg = vsnprintf(buf + prefix, (int)sizeof(buf) - prefix - 2, fmt, args);
+    va_end(args);
+    int total = prefix + msg;
+    if (total > (int)sizeof(buf) - 2) total = (int)sizeof(buf) - 2;
+    buf[total++] = '\r';
+    buf[total++] = '\n';
+    HAL_UART_Transmit(&huart4, (uint8_t*)buf, (uint16_t)total, 1000);
+}
 
 /* USER CODE END 0 */
 
@@ -143,6 +159,7 @@ int main(void)
   HAL_UART_Transmit(&huart4, (uint8_t*)"\r\n========================================\r\n", 43, 1000);
   HAL_UART_Transmit(&huart4, (uint8_t*)"  STM32 + Grove AI Vision Module\r\n", 35, 1000);
   HAL_UART_Transmit(&huart4, (uint8_t*)"========================================\r\n", 43, 1000);
+  uart_log("BOOT: System started");
 
 
 //  char msg[50];
@@ -238,9 +255,10 @@ int main(void)
 	        if (sscma.box_detected)
 	        {//B9
 	        	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_9);
-	            HAL_UART_Transmit(&huart4,
-	                (uint8_t*)"Face detected\r\n",
-	                15, 1000);
+	            uart_log("FACE: x=%u y=%u w=%u h=%u score=%u",
+	                sscma.last_box.x, sscma.last_box.y,
+	                sscma.last_box.w, sscma.last_box.h,
+	                sscma.last_box.score);
 
 	            last_face_time = HAL_GetTick();
 
@@ -249,9 +267,7 @@ int main(void)
 	                if (SSCMA_SaveJPEG(&sscma) == CMD_OK)
 	                {
 	                    jpeg_saving = 1;
-	                    HAL_UART_Transmit(&huart4,
-	                        (uint8_t*)"[JPEG] Saving enabled\r\n",
-	                        23, 1000);
+	                    uart_log("JPEG: Saving enabled");
 	                }
 	            }
 	        }
@@ -259,9 +275,7 @@ int main(void)
 	        {
 	            SSCMA_CleanActions(&sscma);
 	            jpeg_saving = 0;
-	            HAL_UART_Transmit(&huart4,
-	                (uint8_t*)"[JPEG] Saving disabled\r\n",
-	                24, 1000);
+	            uart_log("JPEG: Saving disabled (no face for 3s)");
 	        }
 	    }
 
