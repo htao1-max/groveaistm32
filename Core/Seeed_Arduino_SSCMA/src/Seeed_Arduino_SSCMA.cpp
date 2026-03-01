@@ -9,6 +9,12 @@
 #include "Seeed_Arduino_SSCMA.h"
 #include <stdlib.h>
 
+
+extern "C" {
+    #include "main.h"
+    extern UART_HandleTypeDef huart4;
+}
+
 // JSON parsing requires a library - You'll need to add one or parse manually
 // For now, we'll add stubs that you can implement with your preferred JSON library
 // Options: cJSON, jsmn, parson, etc.
@@ -71,6 +77,11 @@ bool SSCMA_Init_I2C(SSCMA_t *sscma, I2C_HandleTypeDef *hi2c,
     sscma->i2c_address = address;
     sscma->wait_delay = wait_delay;
     
+
+
+//    sscma->debug_uart = &huart4;
+
+
     SSCMA_SetRxBuffer(sscma, SSCMA_MAX_RX_SIZE);
     SSCMA_SetTxBuffer(sscma, SSCMA_MAX_TX_SIZE);
     
@@ -114,6 +125,18 @@ int SSCMA_Write(SSCMA_t *sscma, const char *data, int length) {
     }
 }
 
+int SSCMA_SelectModel(SSCMA_t *sscma, int id)
+{
+    char cmd[32];
+    snprintf(cmd, sizeof(cmd), "AT+MODEL=%d\r\n", id);
+
+    SSCMA_Write(sscma, cmd, strlen(cmd));
+
+    return wait_response(sscma, CMD_TYPE_RESPONSE, "MODEL", 3000);
+}
+
+
+
 // Read data
 int SSCMA_Read(SSCMA_t *sscma, char *data, int length) {
     switch (sscma->interface) {
@@ -128,6 +151,18 @@ int SSCMA_Read(SSCMA_t *sscma, char *data, int length) {
             return 0;
     }
 }
+
+int SSCMA_InvokeOnce(SSCMA_t *sscma)
+{
+    sscma->box_detected = 0;
+
+    SSCMA_Write(sscma, "AT+INVOKE=1,0,1\r\n", 16);
+
+    // MUST wait for final EVENT (type 1)
+    return wait_response(sscma, CMD_TYPE_EVENT, "INVOKE", 3000);
+}
+
+
 
 // Check available data
 int SSCMA_Available(SSCMA_t *sscma) {
@@ -145,6 +180,14 @@ int SSCMA_Available(SSCMA_t *sscma) {
 
 // I2C command
 static void i2c_cmd(SSCMA_t *sscma, uint8_t feature, uint8_t cmd, uint16_t len, uint8_t *data) {
+
+//
+//	HAL_UART_Transmit(sscma->debug_uart,
+//	                  (uint8_t*)"Entered i2c_write\r\n",
+//	                  20,
+//	                  1000);
+
+
     uint8_t tx_data[PACKET_SIZE];
     uint16_t idx = 0;
     
@@ -164,22 +207,44 @@ static void i2c_cmd(SSCMA_t *sscma, uint8_t feature, uint8_t cmd, uint16_t len, 
     tx_data[idx++] = 0;
     
     HAL_I2C_Master_Transmit(sscma->hi2c, sscma->i2c_address, tx_data, idx, 1000);
+
+//    if (HAL_I2C_Master_Transmit(sscma->hi2c, sscma->i2c_address, tx_data, idx, 1000) == HAL_OK)
+//    {
+//        HAL_UART_Transmit(&huart4, (uint8_t*)"TX OK\r\n", 7, 1000);
+//    }
+//    else
+//    {
+//        HAL_UART_Transmit(&huart4, (uint8_t*)"TX FAIL\r\n", 9, 1000);
+//    }
+
 }
 
 // I2C available
 static int i2c_available(SSCMA_t *sscma) {
     uint8_t buf[2] = {0};
     uint8_t cmd[6] = {FEATURE_TRANSPORT, FEATURE_TRANSPORT_CMD_AVAILABLE, 0, 0, 0, 0};
-    
-    HAL_Delay(sscma->wait_delay);
-    
-    if (HAL_I2C_Master_Transmit(sscma->hi2c, sscma->i2c_address, cmd, 6, 1000) == HAL_OK) {
-        HAL_Delay(sscma->wait_delay);
-        HAL_I2C_Master_Receive(sscma->hi2c, sscma->i2c_address, buf, 2, 1000);
+
+//    HAL_UART_Transmit(sscma->debug_uart, (uint8_t*)"Checking available...\r\n", 24, 1000);
+
+    if (HAL_I2C_Master_Transmit(sscma->hi2c, sscma->i2c_address, cmd, 6, 1000) != HAL_OK) {
+//        HAL_UART_Transmit(sscma->debug_uart, (uint8_t*)"TX FAIL\r\n", 9, 1000);
+        return 0;
     }
-    
+
+    HAL_Delay(sscma->wait_delay);
+
+    if (HAL_I2C_Master_Receive(sscma->hi2c, sscma->i2c_address, buf, 2, 1000) != HAL_OK) {
+//        HAL_UART_Transmit(sscma->debug_uart, (uint8_t*)"RX FAIL\r\n", 9, 1000);
+        return 0;
+    }
+
+    char dbg[50];
+    sprintf(dbg, "Available raw: %02X %02X\r\n", buf[0], buf[1]);
+//    HAL_UART_Transmit(sscma->debug_uart, (uint8_t*)dbg, strlen(dbg), 1000);
+
     return (buf[0] << 8) | buf[1];
 }
+
 
 // I2C read
 static int i2c_read(SSCMA_t *sscma, char *data, int length) {
@@ -205,6 +270,12 @@ static int i2c_read(SSCMA_t *sscma, char *data, int length) {
 
 // I2C write
 static int i2c_write(SSCMA_t *sscma, const char *data, int length) {
+
+//	HAL_UART_Transmit(sscma->debug_uart,
+//	                  (uint8_t*)"Entered i2c_write\r\n",
+//	                  20,
+//	                  1000);
+
     uint16_t packets = length / MAX_PL_LEN;
     uint16_t remain = length % MAX_PL_LEN;
     
@@ -222,65 +293,162 @@ static int i2c_write(SSCMA_t *sscma, const char *data, int length) {
 }
 
 // Wait for response
-static int wait_response(SSCMA_t *sscma, int type, const char *cmd, uint32_t timeout) {
-    int ret = CMD_OK;
+static int wait_response(SSCMA_t *sscma, int expected_type, const char *expected_cmd, uint32_t timeout)
+{
     uint32_t startTime = HAL_GetTick();
     char *payload = NULL;
-    
-    while (HAL_GetTick() - startTime <= timeout) {
+
+    while (HAL_GetTick() - startTime <= timeout)
+    {
         int len = SSCMA_Available(sscma);
-        if (len == 0) continue;
-        
-        if (len + sscma->rx_end > sscma->rx_len) {
+        if (len == 0)
+            continue;
+
+        if (len + sscma->rx_end > sscma->rx_len)
+        {
             len = sscma->rx_len - sscma->rx_end;
-            if (len <= 0) {
+            if (len <= 0)
+            {
                 sscma->rx_end = 0;
                 continue;
             }
         }
-        
+
         sscma->rx_end += SSCMA_Read(sscma, sscma->rx_buf + sscma->rx_end, len);
         sscma->rx_buf[sscma->rx_end] = '\0';
-        
+
         char *suffix = strnstr_custom(sscma->rx_buf, RESPONSE_SUFFIX, sscma->rx_end);
-        while (suffix != NULL) {
+
+        while (suffix != NULL)
+        {
             char *prefix = strnstr_custom(sscma->rx_buf, RESPONSE_PREFIX, suffix - sscma->rx_buf);
-            if (prefix != NULL) {
+
+            if (prefix != NULL)
+            {
                 len = suffix - prefix + RESPONSE_SUFFIX_LEN;
                 payload = (char *)malloc(len);
-                
-                if (payload) {
-                    memcpy(payload, prefix + 1, len - 1);
-                    memmove(sscma->rx_buf, suffix + RESPONSE_SUFFIX_LEN,
-                           sscma->rx_end - (suffix - sscma->rx_buf) - RESPONSE_SUFFIX_LEN);
-                    sscma->rx_end -= suffix - sscma->rx_buf + RESPONSE_SUFFIX_LEN;
-                    payload[len - 1] = '\0';
-                    
-                    // Parse JSON here - you'll need to add JSON parsing
-                    // For now, we'll just check if it's an event
+
+                if (!payload)
+                    break;
+
+                memcpy(payload, prefix + 1, len - 1);
+                payload[len - 1] = '\0';
+//                HAL_UART_Transmit(&huart4, (uint8_t*)payload, strlen(payload), 1000);
+//                HAL_UART_Transmit(&huart4, (uint8_t*)"\r\n\r\n", 4, 1000);
+                parse_event(sscma, payload);
+
+                if (sscma->box_detected)
+                {
+                    HAL_UART_Transmit(&huart4,
+                        (uint8_t*)payload,
+                        strlen(payload),
+                        1000);
+
+                    HAL_UART_Transmit(&huart4,
+                        (uint8_t*)"\r\n\r\n",
+                        4,
+                        1000);
+                }
+
+
+                memmove(sscma->rx_buf,
+                        suffix + RESPONSE_SUFFIX_LEN,
+                        sscma->rx_end - (suffix - sscma->rx_buf) - RESPONSE_SUFFIX_LEN);
+
+                sscma->rx_end -= (suffix - sscma->rx_buf) + RESPONSE_SUFFIX_LEN;
+
+                /* ---- Minimal manual parsing ---- */
+
+                int msg_type = -1;
+                char msg_name[32] = {0};
+
+                char *type_ptr = strstr(payload, "\"type\":");
+                if (type_ptr)
+                    sscanf(type_ptr, "\"type\": %d", &msg_type);
+
+                char *name_ptr = strstr(payload, "\"name\":");
+                if (name_ptr)
+                    sscanf(name_ptr, "\"name\": \"%31[^\"]\"", msg_name);
+
+                /* If this is EVENT, parse it */
+                if (msg_type == CMD_TYPE_EVENT)
+                {
                     parse_event(sscma, payload);
-                    
+                }
+
+                /* Return only when type and name match expected */
+                if (msg_type == expected_type &&
+                    strcmp(msg_name, expected_cmd) == 0)
+                {
                     free(payload);
                     return CMD_OK;
                 }
-            } else {
-                memmove(sscma->rx_buf, suffix + RESPONSE_PREFIX_LEN,
-                       sscma->rx_end - (suffix - sscma->rx_buf) - RESPONSE_PREFIX_LEN);
-                sscma->rx_end -= suffix - sscma->rx_buf + RESPONSE_PREFIX_LEN;
+
+                free(payload);
+            }
+            else
+            {
+                memmove(sscma->rx_buf,
+                        suffix + RESPONSE_PREFIX_LEN,
+                        sscma->rx_end - (suffix - sscma->rx_buf) - RESPONSE_PREFIX_LEN);
+
+                sscma->rx_end -= (suffix - sscma->rx_buf) + RESPONSE_PREFIX_LEN;
                 sscma->rx_buf[sscma->rx_end] = '\0';
             }
+
             suffix = strnstr_custom(sscma->rx_buf, RESPONSE_SUFFIX, sscma->rx_end);
         }
     }
-    
+
     return CMD_ETIMEDOUT;
 }
 
-// Parse event - STUB - You need to implement with JSON library
-static void parse_event(SSCMA_t *sscma, const char *json) {
-    // TODO: Implement JSON parsing using cJSON, jsmn, or another library
-    // This is where you'd parse boxes, classes, points, keypoints, perf, etc.
+
+// Parse event
+static void parse_event(SSCMA_t *sscma, const char *json)
+{
+    // Reset detection each event
+    sscma->box_detected = 0;
+
+    // Only care about INVOKE result events
+    if (strstr(json, "\"name\": \"INVOKE\"") == NULL)
+        return;
+
+    if (strstr(json, "\"type\": 1") == NULL)
+        return;
+
+    // Find start of boxes array
+    char *boxes_ptr = strstr(json, "\"boxes\":");
+    if (!boxes_ptr)
+        return;
+
+    // If empty boxes
+    if (strstr(boxes_ptr, "[]"))
+        return;
+
+    // Find first [[
+    char *start = strstr(boxes_ptr, "[[");
+    if (!start)
+        return;
+
+    int x, y, w, h, score, target;
+
+    // Parse first box only
+    if (sscanf(start, "[[%d,%d,%d,%d,%d,%d",
+               &x, &y, &w, &h, &score, &target) == 6)
+    {
+        sscma->last_box.x = (uint16_t)x;
+        sscma->last_box.y = (uint16_t)y;
+        sscma->last_box.w = (uint16_t)w;
+        sscma->last_box.h = (uint16_t)h;
+        sscma->last_box.score = (uint8_t)score;
+        sscma->last_box.target = (uint8_t)target;
+
+        sscma->box_detected = 1;
+    }
 }
+
+
 
 // Invoke
 int SSCMA_Invoke(SSCMA_t *sscma, int times, bool filter, bool show) {
@@ -302,62 +470,117 @@ int SSCMA_Invoke(SSCMA_t *sscma, int times, bool filter, bool show) {
     return CMD_ETIMEDOUT;
 }
 
+int SSCMA_InvokeMulti(SSCMA_t *sscma)
+{
+	while (1)
+	    {
+	        SSCMA_Write(sscma, "AT+INVOKE=1,0,1\r\n", 16);
+
+	        wait_response(sscma, CMD_TYPE_EVENT, "INVOKE", 3000);
+
+	        HAL_Delay(50);   // small pacing delay
+	    }
+}
+
+
 // Get ID
-char* SSCMA_GetID(SSCMA_t *sscma, bool cache) {
-    if (cache && sscma->id[0]) {
-        return sscma->id;
-    }
-    
-    char cmd[64];
-    snprintf(cmd, sizeof(cmd), "AT+ID?\r\n");
+char* SSCMA_GetInfo(SSCMA_t *sscma, bool cache)
+{
+    if (cache && sscma->info[0])
+        return sscma->info;
+
+    char cmd[] = "AT+INFO?\r\n";
     SSCMA_Write(sscma, cmd, strlen(cmd));
-    
-    if (wait_response(sscma, CMD_TYPE_RESPONSE, CMD_AT_ID, 3000) == CMD_OK) {
-        // Parse response and copy to sscma->id
-        // For now, return stub
-        strcpy(sscma->id, "DEVICE_ID");
-        return sscma->id;
+
+    if (wait_response(sscma, CMD_TYPE_RESPONSE, "INFO?", 3000) == CMD_OK)
+    {
+        char *data_ptr = strstr(sscma->rx_buf, "\"info\":");
+        if (data_ptr)
+        {
+            sscanf(data_ptr, "\"info\": \"%255[^\"]\"", sscma->info);
+            return sscma->info;
+        }
     }
-    
+
     return NULL;
 }
+
 
 // Get Name
-char* SSCMA_GetName(SSCMA_t *sscma, bool cache) {
-    if (cache && sscma->name[0]) {
+char* SSCMA_GetName(SSCMA_t *sscma, bool cache)
+{
+    if (cache && sscma->name[0])
         return sscma->name;
-    }
-    
-    char cmd[64];
-    snprintf(cmd, sizeof(cmd), "AT+NAME?\r\n");
+
+    char cmd[] = "AT+NAME?\r\n";
     SSCMA_Write(sscma, cmd, strlen(cmd));
-    
-    if (wait_response(sscma, CMD_TYPE_RESPONSE, CMD_AT_NAME, 3000) == CMD_OK) {
-        // Parse response and copy to sscma->name
-        strcpy(sscma->name, "DEVICE_NAME");
-        return sscma->name;
+
+    if (wait_response(sscma, CMD_TYPE_RESPONSE, "NAME?", 3000) == CMD_OK)
+    {
+        char *data_ptr = strstr(sscma->rx_buf, "\"data\":");
+        if (data_ptr)
+        {
+            sscanf(data_ptr, "\"data\": \"%63[^\"]\"", sscma->name);
+            return sscma->name;
+        }
     }
-    
+
     return NULL;
 }
 
+
 // Get Info
-char* SSCMA_GetInfo(SSCMA_t *sscma, bool cache) {
-    if (cache && sscma->info[0]) {
-        return sscma->info;
-    }
-    
-    char cmd[64];
-    snprintf(cmd, sizeof(cmd), "AT+INFO?\r\n");
+char* SSCMA_GetID(SSCMA_t *sscma, bool cache)
+{
+    if (cache && sscma->id[0])
+        return sscma->id;
+
+    char cmd[] = "AT+ID?\r\n";
     SSCMA_Write(sscma, cmd, strlen(cmd));
-    
-    if (wait_response(sscma, CMD_TYPE_RESPONSE, CMD_AT_INFO, 3000) == CMD_OK) {
-        strcpy(sscma->info, "DEVICE_INFO");
-        return sscma->info;
+
+    if (wait_response(sscma, CMD_TYPE_RESPONSE, "ID?", 3000) == CMD_OK)
+    {
+        char *data_ptr = strstr(sscma->rx_buf, "\"data\":");
+        if (data_ptr)
+        {
+            sscanf(data_ptr, "\"data\": \"%31[^\"]\"", sscma->id);
+            return sscma->id;
+        }
     }
-    
+
     return NULL;
 }
+
+
+int SSCMA_GetModelInfo(SSCMA_t *sscma)
+{
+    char cmd[] = "AT+MODEL?\r\n";
+    SSCMA_Write(sscma, cmd, strlen(cmd));
+
+    return wait_response(sscma, CMD_TYPE_RESPONSE, "MODEL?", 3000);
+}
+
+int SSCMA_LoadModel(SSCMA_t *sscma)
+{
+    char cmd[] = "AT+MODEL\r\n";
+    SSCMA_Write(sscma, cmd, strlen(cmd));
+    return wait_response(sscma, CMD_TYPE_RESPONSE, "MODEL", 3000);
+}
+
+
+int SSCMA_QueryModel(SSCMA_t *sscma)
+{
+    char cmd[] = "AT+MODEL?\r\n";
+    SSCMA_Write(sscma, cmd, strlen(cmd));
+    return wait_response(sscma, CMD_TYPE_RESPONSE, "MODEL?", 3000);
+}
+
+int SSCMA_QueryStatus(SSCMA_t *sscma)
+{
+    SSCMA_Write(sscma, "AT+STAT?\r\n", 10);
+    return wait_response(sscma, CMD_TYPE_RESPONSE, "STAT?", 3000);
+}
+
 
 // Clean actions
 int SSCMA_CleanActions(SSCMA_t *sscma) {
@@ -464,6 +687,9 @@ void SSCMA_Fetch(SSCMA_t *sscma, ResponseCallback callback) {
 }
 
 // WiFi and MQTT functions - implement as needed following the pattern above
+
+
+//Not implemented yet
 int SSCMA_GetWiFi(SSCMA_t *sscma, wifi_t *wifi) {
     // Implementation similar to other query functions
     return CMD_ENOTSUP;

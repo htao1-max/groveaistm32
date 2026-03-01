@@ -173,6 +173,15 @@ typedef enum {
 // Callback function type
 typedef void (*ResponseCallback)(const char *resp, size_t len);
 
+typedef struct {
+    uint16_t x;
+    uint16_t y;
+    uint16_t w;
+    uint16_t h;
+    uint8_t score;
+    uint8_t target;
+} SSCMA_Box_t;
+
 // Main SSCMA structure
 typedef struct {
     // Communication interface
@@ -182,6 +191,10 @@ typedef struct {
     I2C_HandleTypeDef *hi2c;
     UART_HandleTypeDef *huart;
     
+
+//    UART_HandleTypeDef *debug_uart;
+
+
     // GPIO pins (for reset only)
     GPIO_TypeDef *rst_port;
     uint16_t rst_pin;
@@ -207,6 +220,8 @@ typedef struct {
     uint8_t points_count;
     keypoints_t keypoints[8];
     uint8_t keypoints_count;
+    SSCMA_Box_t last_box;
+    uint8_t box_detected;
     
     char name[32];
     char id[32];
@@ -243,6 +258,14 @@ int SSCMA_GetWiFi(SSCMA_t *sscma, wifi_t *wifi);
 int SSCMA_GetMQTT(SSCMA_t *sscma, mqtt_t *mqtt);
 int SSCMA_SetWiFiStatus(SSCMA_t *sscma, wifi_status_t *wifi_status);
 int SSCMA_SetMQTTStatus(SSCMA_t *sscma, mqtt_status_t *mqtt_status);
+int SSCMA_GetModelInfo(SSCMA_t *sscma);
+int SSCMA_LoadModel(SSCMA_t *sscma);
+int SSCMA_QueryModel(SSCMA_t *sscma);
+int SSCMA_SelectModel(SSCMA_t *sscma, int id);
+int SSCMA_QueryStatus(SSCMA_t *sscma);
+int SSCMA_InvokeMulti(SSCMA_t *sscma);
+int SSCMA_InvokeOnce(SSCMA_t *sscma);
+
 
 // Action functions
 int SSCMA_CleanActions(SSCMA_t *sscma);

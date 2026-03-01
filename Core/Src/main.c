@@ -2,7 +2,7 @@
 /**
   ******************************************************************************
   * @file           : main.c
-  * @brief          : Main program body
+  * @brief          : Main program body with SSCMA AI integration
   ******************************************************************************
   * @attention
   *
@@ -21,8 +21,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "stdio.h"
-#include "Seeed_Arduino_SSCMA.h"  // Changed from Arduino version to STM32 version
+#include <stdio.h>
+#include <string.h>
+#include "Seeed_Arduino_SSCMA.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,13 +48,18 @@ I2C_HandleTypeDef hi2c2;
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
+// SSCMA device structure
+SSCMA_t sscma;
+
+// I2C Scanner variables
 uint8_t Buffer[25] = {0};
 uint8_t Space[] = " - ";
 uint8_t StartMSG[] = "Starting I2C Scanning: \r\n";
 uint8_t EndMSG[] = "Done! \r\n\r\n";
 
-// SSCMA device structure
-SSCMA_t sscma;
+
+volatile uint32_t systick_counter = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -79,7 +85,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	uint8_t i = 0, ret;
+  uint8_t i = 0, ret;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -88,6 +94,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+  SCB->VTOR = 0x08000000;
 
   /* USER CODE END Init */
 
@@ -105,111 +112,223 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
-  // Initialize SSCMA with I2C (STM32 version)
-  // Parameters: I2C handle, no reset pin, I2C address, wait delay
-  HAL_UART_Transmit(&huart4, (uint8_t*)"Initializing SSCMA...\r\n", 24, 1000);
+  if (HAL_I2C_IsDeviceReady(&hi2c1, (0x62 << 1), 3, 100) == HAL_OK)
+  {
+      HAL_UART_Transmit(&huart4, (uint8_t*)"I2C device found at 0x62\r\n", 27, 1000);
+  }
+  else
+  {
+      HAL_UART_Transmit(&huart4, (uint8_t*)"I2C device NOT found\r\n", 22, 1000);
+  }
+
+  if (SysTick->CTRL & SysTick_CTRL_ENABLE_Msk)
+  {
+      HAL_UART_Transmit(&huart4, (uint8_t*)"SysTick enabled\r\n", 17, 1000);
+  }
+  else
+  {
+      HAL_UART_Transmit(&huart4, (uint8_t*)"SysTick NOT enabled\r\n", 21, 1000);
+  }
+  char msg[50];
+  sprintf(msg, "VTOR: 0x%08lX\r\n", SCB->VTOR);
+  HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
+
+
+
+  // Welcome message
+  HAL_UART_Transmit(&huart4, (uint8_t*)"\r\n========================================\r\n", 43, 1000);
+  HAL_UART_Transmit(&huart4, (uint8_t*)"  STM32 + Grove AI Vision Module\r\n", 35, 1000);
+  HAL_UART_Transmit(&huart4, (uint8_t*)"========================================\r\n", 43, 1000);
+
+
+//  char msg[50];
+//  sprintf(msg, "SysTick count: %lu\r\n", systick_counter);
+//  HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
+
+//  __enable_irq();
+//  HAL_Delay(2000);
+
+  // Initialize SSCMA with I2C
+  HAL_UART_Transmit(&huart4, (uint8_t*)"Initializing SSCMA device...\r\n", 31, 1000);
 
   if (SSCMA_Init_I2C(&sscma, &hi2c1, NULL, 0, I2C_ADDRESS, 2)) {
-      HAL_UART_Transmit(&huart4, (uint8_t*)"SSCMA initialized successfully!\r\n", 34, 1000);
+      HAL_UART_Transmit(&huart4, (uint8_t*)"[OK] SSCMA initialized!\r\n", 26, 1000);
 
       // Get device name
       char *name = SSCMA_GetName(&sscma, false);
       if (name) {
-          char msg[64];
-          snprintf(msg, sizeof(msg), "Device Name: %s\r\n", name);
+          char msg[100];
+          snprintf(msg, sizeof(msg), "[INFO] Device: %s\r\n", name);
           HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
       }
 
       // Get device ID
       char *id = SSCMA_GetID(&sscma, false);
       if (id) {
-          char msg[64];
-          snprintf(msg, sizeof(msg), "Device ID: %s\r\n", id);
+          char msg[100];
+          snprintf(msg, sizeof(msg), "[INFO] ID: %s\r\n", id);
           HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
       }
   } else {
-      HAL_UART_Transmit(&huart4, (uint8_t*)"SSCMA initialization failed!\r\n", 31, 1000);
+      HAL_UART_Transmit(&huart4, (uint8_t*)"[ERROR] SSCMA initialization failed!\r\n", 39, 1000);
+      HAL_UART_Transmit(&huart4, (uint8_t*)"[INFO] Check I2C connections\r\n", 31, 1000);
   }
 
-  HAL_UART_Transmit(&huart4, (uint8_t*)"Starting main application loop...\r\n", 36, 1000);
+//  char *info = SSCMA_GetInfo(&sscma, false);
+//  if (info) {
+//      HAL_UART_Transmit(&huart4, (uint8_t*)info, strlen(info), 1000);
+//      HAL_UART_Transmit(&huart4, (uint8_t*)"\r\n", 2, 1000);
+//  }
+//  else{
+//	  HAL_UART_Transmit(&huart4, (uint8_t*)"No model loaded into grove\r\n", 30, 1000);
+//  }
+//
+//  HAL_UART_Transmit(&huart4, (uint8_t*)"Starting runtime...\r\n", 21, 1000);
+//
+//  SSCMA_Run(&sscma);
+//  SSCMA_QueryModel(&sscma);
+
+
+//  // After successful SSCMA_Init_I2C and GetInfo
+//
+//  HAL_UART_Transmit(&huart4, (uint8_t*)"Checking model...\r\n", 19, 1000);
+//
+//  SSCMA_GetModelInfo(&sscma);
+//  HAL_UART_Transmit(&huart4, (uint8_t*)"Listing models...\r\n", 19, 1000);
+//  SSCMA_Write(&sscma, "AT+HELP\r\n", 14);
+//
+////  SSCMA_QueryModel(&sscma);
+
+//  HAL_UART_Transmit(&huart4, (uint8_t*)"Checking status...\r\n", 20, 1000);
+//  SSCMA_QueryStatus(&sscma);
+//
+//
+//  HAL_UART_Transmit(&huart4, (uint8_t*)"Selecting model 1...\r\n", 22, 1000);
+//
+//  SSCMA_SelectModel(&sscma, 1);
+//  SSCMA_Invoke(&sscma, 0, false, false);
+//
+//  HAL_UART_Transmit(&huart4, (uint8_t*)"Running inference...\r\n", 22, 1000);
+//
+//  SSCMA_InvokeMulti(&sscma);
+//  SSCMA_Write(&sscma, "AT+INVOKE=0,1,1\r\n", 16);
+
+  SSCMA_SelectModel(&sscma, 1);
+  HAL_Delay(300);
+
+  HAL_UART_Transmit(&huart4, (uint8_t*)"========================================\r\n", 43, 1000);
+  HAL_UART_Transmit(&huart4, (uint8_t*)"Starting main loop...\r\n\r\n", 25, 1000);
+
+
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
   while (1)
   {
+
+	    if (SSCMA_InvokeOnce(&sscma) == CMD_OK)
+	    {
+	        if (sscma.box_detected)
+	        {//B9
+	        	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_9);
+	            HAL_UART_Transmit(&huart4,
+	                (uint8_t*)"Face detected\r\n",
+	                15, 1000);
+	        }
+	    }
+
+	    HAL_Delay(150);
+//	  SSCMA_Fetch(&sscma, NULL);
+//	  HAL_Delay(50);
     /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
+//    /* USER CODE BEGIN 3 */
+//
+//    // ========================================
+//    // Run AI Inference
+//    // ========================================
+//	HAL_UART_Transmit(&huart4, (uint8_t*)"Invoking...\r\n", 13, 1000);
+//
+//
+//    if (SSCMA_Invoke(&sscma, 1, false, false) == CMD_OK) {//should be 1, true, false
+//
+//        // Check for detected objects (bounding boxes)
+//        if (sscma.boxes_count > 0) {
+//            char msg[150];
+//            snprintf(msg, sizeof(msg), "\r\n[AI] Detected %d object(s):\r\n", sscma.boxes_count);
+//            HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
+//
+//            for (int j = 0; j < sscma.boxes_count && j < 5; j++) {  // Limit to 5 objects
+//                snprintf(msg, sizeof(msg),
+//                        "  [%d] x=%d y=%d w=%d h=%d score=%d target=%d\r\n",
+//                        j + 1,
+//                        sscma.boxes[j].x,
+//                        sscma.boxes[j].y,
+//                        sscma.boxes[j].w,
+//                        sscma.boxes[j].h,
+//                        sscma.boxes[j].score,
+//                        sscma.boxes[j].target);
+//                HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
+//            }
+//        }
+//
+//        // Check for classifications
+//        if (sscma.classes_count > 0) {
+//            char msg[100];
+//            snprintf(msg, sizeof(msg),
+//                    "[AI] Classification: target=%d score=%d\r\n",
+//                    sscma.classes[0].target,
+//                    sscma.classes[0].score);
+//            HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
+//        }
+//
+//        // Show performance metrics
+//        char perf_msg[150];
+//        snprintf(perf_msg, sizeof(perf_msg),
+//                "[PERF] Preprocess=%dms Inference=%dms Postprocess=%dms\r\n",
+//                sscma.perf.preprocess,
+//                sscma.perf.inference,
+//                sscma.perf.postprocess);
+//        HAL_UART_Transmit(&huart4, (uint8_t*)perf_msg, strlen(perf_msg), 1000);
+//    }
 
-    // Run SSCMA inference
-    if (SSCMA_Invoke(&sscma, 1, false, false) == CMD_OK) {
-        // Process detected boxes (object detection)
-        if (sscma.boxes_count > 0) {
-            char msg[128];
-            snprintf(msg, sizeof(msg), "Detected %d boxes:\r\n", sscma.boxes_count);
-            HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
 
-            for (int j = 0; j < sscma.boxes_count; j++) {
-                snprintf(msg, sizeof(msg),
-                        "  Box %d: x=%d, y=%d, w=%d, h=%d, score=%d, target=%d\r\n",
-                        j,
-                        sscma.boxes[j].x,
-                        sscma.boxes[j].y,
-                        sscma.boxes[j].w,
-                        sscma.boxes[j].h,
-                        sscma.boxes[j].score,
-                        sscma.boxes[j].target);
-                HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
-            }
-        }
+//
+//    // Small delay between AI inferences
+//    HAL_Delay(10000); //change this back to 500 ????????????????????????????
+//
+//    // ========================================
+//    // I2C Scanner (runs every 2 seconds)
+//    // ========================================
+//    HAL_UART_Transmit(&huart4, StartMSG, sizeof(StartMSG), 1000);
+//
+//    for(i = 1; i < 128; i++)
+//    {
+//        ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i<<1), 3, 5);
+//        if (ret != HAL_OK) {
+//            // No device at this address
+//            HAL_UART_Transmit(&huart4, Space, sizeof(Space), 1000);
+//        }
+//        else if(ret == HAL_OK) {
+//            // Device found!
+//            sprintf((char*)Buffer, "0x%02X", i);
+//            HAL_UART_Transmit(&huart4, Buffer, strlen((char*)Buffer), 1000);
+//        }
+//    }
+//
+//    HAL_UART_Transmit(&huart4, EndMSG, sizeof(EndMSG), 1000);
+//
+//    // ========================================
+//    // Toggle LED
+//    // ========================================
+//    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_9);
+//
+//    // Wait before next cycle
+//    HAL_Delay(1500);
 
-        // Process classifications
-        if (sscma.classes_count > 0) {
-            char msg[128];
-            snprintf(msg, sizeof(msg), "Classification: target=%d, score=%d\r\n",
-                    sscma.classes[0].target,
-                    sscma.classes[0].score);
-            HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
-        }
-
-        // Process performance data
-        char perf_msg[128];
-        snprintf(perf_msg, sizeof(perf_msg),
-                "Performance: Preprocess=%dms, Inference=%dms, Postprocess=%dms\r\n",
-                sscma.perf.preprocess,
-                sscma.perf.inference,
-                sscma.perf.postprocess);
-        HAL_UART_Transmit(&huart4, (uint8_t*)perf_msg, strlen(perf_msg), 1000);
-    }
-
-    HAL_Delay(10);
-
-    // I2C Scanner - runs every 2 seconds
-    HAL_Delay(2000);
-    HAL_UART_Transmit(&huart4, StartMSG, sizeof(StartMSG), 10000);
-
-    for(i = 1; i < 128; i++)
-    {
-        ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i<<1), 3, 5);
-        if (ret != HAL_OK) /* No ACK Received At That Address */
-        {
-            HAL_UART_Transmit(&huart4, Space, sizeof(Space), 10000);
-        }
-        else if(ret == HAL_OK)
-        {
-            sprintf((char*)Buffer, "0x%X", i);
-            HAL_UART_Transmit(&huart4, Buffer, strlen((char*)Buffer), 10000);
-        }
-    }
-
-    HAL_UART_Transmit(&huart4, EndMSG, sizeof(EndMSG), 10000);
-    HAL_Delay(500);
-
-    // Toggle LED
-    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_9);
-    HAL_Delay(500);
   }
   /* USER CODE END 3 */
 }
@@ -406,9 +525,8 @@ static void MX_UART4_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-  /* USER CODE BEGIN MX_GPIO_Init_1 */
-
-  /* USER CODE END MX_GPIO_Init_1 */
+/* USER CODE BEGIN MX_GPIO_Init_1 */
+/* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -425,9 +543,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /* USER CODE BEGIN MX_GPIO_Init_2 */
-
-  /* USER CODE END MX_GPIO_Init_2 */
+/* USER CODE BEGIN MX_GPIO_Init_2 */
+/* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
