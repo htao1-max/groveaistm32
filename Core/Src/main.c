@@ -60,6 +60,10 @@ uint8_t EndMSG[] = "Done! \r\n\r\n";
 
 volatile uint32_t systick_counter = 0;
 
+// JPEG save state
+static uint32_t last_face_time = 0;
+static uint8_t  jpeg_saving    = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -237,6 +241,27 @@ int main(void)
 	            HAL_UART_Transmit(&huart4,
 	                (uint8_t*)"Face detected\r\n",
 	                15, 1000);
+
+	            last_face_time = HAL_GetTick();
+
+	            if (!jpeg_saving)
+	            {
+	                if (SSCMA_SaveJPEG(&sscma) == CMD_OK)
+	                {
+	                    jpeg_saving = 1;
+	                    HAL_UART_Transmit(&huart4,
+	                        (uint8_t*)"[JPEG] Saving enabled\r\n",
+	                        23, 1000);
+	                }
+	            }
+	        }
+	        else if (jpeg_saving && (HAL_GetTick() - last_face_time > 3000))
+	        {
+	            SSCMA_CleanActions(&sscma);
+	            jpeg_saving = 0;
+	            HAL_UART_Transmit(&huart4,
+	                (uint8_t*)"[JPEG] Saving disabled\r\n",
+	                24, 1000);
 	        }
 	    }
 

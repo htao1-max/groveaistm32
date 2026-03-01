@@ -27,7 +27,7 @@
 ../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:610:6:bool SSCMA_SetRxBuffer(SSCMA_t*, uint32_t)	16	static
 ../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:627:6:bool SSCMA_SetTxBuffer(SSCMA_t*, uint32_t)	16	static
 ../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:644:6:void SSCMA_Fetch(SSCMA_t*, ResponseCallback)	40	static
-../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:690:5:int SSCMA_GetWiFi(SSCMA_t*, wifi_t*)	16	static
-../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:695:5:int SSCMA_GetMQTT(SSCMA_t*, mqtt_t*)	16	static
-../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:699:5:int SSCMA_SetWiFiStatus(SSCMA_t*, wifi_status_t*)	16	static
-../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:703:5:int SSCMA_SetMQTTStatus(SSCMA_t*, mqtt_status_t*)	16	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:693:5:int SSCMA_GetWiFi(SSCMA_t*, wifi_t*)	16	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:698:5:int SSCMA_GetMQTT(SSCMA_t*, mqtt_t*)	16	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:702:5:int SSCMA_SetWiFiStatus(SSCMA_t*, wifi_status_t*)	16	static
+../Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.cpp:706:5:int SSCMA_SetMQTTStatus(SSCMA_t*, mqtt_status_t*)	16	static
