@@ -24,7 +24,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#include "Seeed_Arduino_SSCMA.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,21 +48,70 @@ I2C_HandleTypeDef hi2c2;
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
-// SSCMA device structure
-SSCMA_t sscma;
 
-// I2C Scanner variables
-uint8_t Buffer[25] = {0};
-uint8_t Space[] = " - ";
-uint8_t StartMSG[] = "Starting I2C Scanning: \r\n";
-uint8_t EndMSG[] = "Done! \r\n\r\n";
+/* Grove AI I2C comm protocol defines */
+#define GROVE_I2C_ADDR       (0x62 << 1)  /* 7-bit 0x62 → 8-bit 0xC4 */
+#define I2C_FEATURE_RECORDER 0x80
+#define I2C_CMD_RECORD_START 0x01
 
+/* CCITT CRC-16 (poly 0x1021, init 0xFFFF) — same as Himax i2c_comm lib */
+static uint16_t crc16_ccitt(const uint8_t *buf, uint16_t len)
+{
+    uint16_t crc = 0xFFFF;
+    for (uint16_t i = 0; i < len; i++) {
+        crc ^= (uint16_t)buf[i] << 8;
+        for (uint8_t j = 0; j < 8; j++) {
+            if (crc & 0x8000)
+                crc = (crc << 1) ^ 0x1021;
+            else
+                crc <<= 1;
+        }
+    }
+    return crc;
+}
 
-volatile uint32_t systick_counter = 0;
+/**
+ * Send i2ccomm start-recording packet to Grove AI.
+ * @param threshold  0-100 (maps to 0.00-1.00 on Grove side), or -1 to use default
+ * @return HAL_OK on success
+ */
+static HAL_StatusTypeDef grove_start_recording(int threshold)
+{
+    /*
+     * Packet layout (Himax i2ccomm):
+     *   [0] Feature
+     *   [1] Command
+     *   [2] Payload length LSB
+     *   [3] Payload length MSB
+     *   [4..4+N-1] Payload (optional)
+     *   [N] CRC16 LSB
+     *   [N+1] CRC16 MSB
+     */
+    uint8_t pkt[8];  /* max: 4 header + 1 payload + 2 crc + spare */
+    uint16_t payload_len = 0;
+    uint16_t total;
 
-// JPEG save state
-static uint32_t last_face_time = 0;
-static uint8_t  jpeg_saving    = 0;
+    pkt[0] = I2C_FEATURE_RECORDER;  /* feature */
+    pkt[1] = I2C_CMD_RECORD_START;  /* command */
+
+    if (threshold >= 0 && threshold <= 100) {
+        payload_len = 1;
+        pkt[4] = (uint8_t)threshold;
+    }
+
+    pkt[2] = payload_len & 0xFF;        /* payload len LSB */
+    pkt[3] = (payload_len >> 8) & 0xFF;  /* payload len MSB */
+
+    total = 4 + payload_len;
+
+    /* Append CRC-16 over header + payload */
+    uint16_t crc = crc16_ccitt(pkt, total);
+    pkt[total]     = crc & 0xFF;        /* CRC LSB */
+    pkt[total + 1] = (crc >> 8) & 0xFF; /* CRC MSB */
+    total += 2;
+
+    return HAL_I2C_Master_Transmit(&hi2c1, GROVE_I2C_ADDR, pkt, total, 1000);
+}
 
 /* USER CODE END PV */
 
@@ -105,7 +153,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-  uint8_t i = 0, ret;
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -132,116 +180,39 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
-  if (HAL_I2C_IsDeviceReady(&hi2c1, (0x62 << 1), 3, 100) == HAL_OK)
-  {
-      HAL_UART_Transmit(&huart4, (uint8_t*)"I2C device found at 0x62\r\n", 27, 1000);
-  }
-  else
-  {
-      HAL_UART_Transmit(&huart4, (uint8_t*)"I2C device NOT found\r\n", 22, 1000);
-  }
-
-  if (SysTick->CTRL & SysTick_CTRL_ENABLE_Msk)
-  {
-      HAL_UART_Transmit(&huart4, (uint8_t*)"SysTick enabled\r\n", 17, 1000);
-  }
-  else
-  {
-      HAL_UART_Transmit(&huart4, (uint8_t*)"SysTick NOT enabled\r\n", 21, 1000);
-  }
-  char msg[50];
-  sprintf(msg, "VTOR: 0x%08lX\r\n", SCB->VTOR);
-  HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
-
-
-
   // Welcome message
-  HAL_UART_Transmit(&huart4, (uint8_t*)"\r\n========================================\r\n", 43, 1000);
-  HAL_UART_Transmit(&huart4, (uint8_t*)"  STM32 + Grove AI Vision Module\r\n", 35, 1000);
-  HAL_UART_Transmit(&huart4, (uint8_t*)"========================================\r\n", 43, 1000);
-  uart_log("BOOT: System started");
+  uart_log("========================================");
+  uart_log("  STM32 + Grove AI (i2ccomm SD-log)");
+  uart_log("========================================");
 
-
-//  char msg[50];
-//  sprintf(msg, "SysTick count: %lu\r\n", systick_counter);
-//  HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
-
-//  __enable_irq();
-//  HAL_Delay(2000);
-
-  // Initialize SSCMA with I2C
-  HAL_UART_Transmit(&huart4, (uint8_t*)"Initializing SSCMA device...\r\n", 31, 1000);
-
-  if (SSCMA_Init_I2C(&sscma, &hi2c1, NULL, 0, I2C_ADDRESS, 2)) {
-      HAL_UART_Transmit(&huart4, (uint8_t*)"[OK] SSCMA initialized!\r\n", 26, 1000);
-
-      // Get device name
-      char *name = SSCMA_GetName(&sscma, false);
-      if (name) {
-          char msg[100];
-          snprintf(msg, sizeof(msg), "[INFO] Device: %s\r\n", name);
-          HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
-      }
-
-      // Get device ID
-      char *id = SSCMA_GetID(&sscma, false);
-      if (id) {
-          char msg[100];
-          snprintf(msg, sizeof(msg), "[INFO] ID: %s\r\n", id);
-          HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
-      }
-  } else {
-      HAL_UART_Transmit(&huart4, (uint8_t*)"[ERROR] SSCMA initialization failed!\r\n", 39, 1000);
-      HAL_UART_Transmit(&huart4, (uint8_t*)"[INFO] Check I2C connections\r\n", 31, 1000);
+  // Check Grove AI is on the bus
+  if (HAL_I2C_IsDeviceReady(&hi2c1, GROVE_I2C_ADDR, 3, 100) == HAL_OK)
+  {
+      uart_log("I2C: Grove AI found at 0x62");
+  }
+  else
+  {
+      uart_log("I2C: Grove AI NOT found at 0x62 — check wiring!");
   }
 
-//  char *info = SSCMA_GetInfo(&sscma, false);
-//  if (info) {
-//      HAL_UART_Transmit(&huart4, (uint8_t*)info, strlen(info), 1000);
-//      HAL_UART_Transmit(&huart4, (uint8_t*)"\r\n", 2, 1000);
-//  }
-//  else{
-//	  HAL_UART_Transmit(&huart4, (uint8_t*)"No model loaded into grove\r\n", 30, 1000);
-//  }
-//
-//  HAL_UART_Transmit(&huart4, (uint8_t*)"Starting runtime...\r\n", 21, 1000);
-//
-//  SSCMA_Run(&sscma);
-//  SSCMA_QueryModel(&sscma);
+  // Give Grove AI time to finish booting (SD mount, model load, camera init)
+  uart_log("Waiting 5s for Grove AI to finish init...");
+  HAL_Delay(5000);
 
+  // Send start-recording command with 50% threshold
+  uart_log("Sending start-recording (threshold=50%%)...");
+  HAL_StatusTypeDef rc = grove_start_recording(50);
+  if (rc == HAL_OK)
+  {
+      uart_log("I2C TX OK — recording should start on Grove AI");
+  }
+  else
+  {
+      uart_log("I2C TX FAILED (rc=%d)", rc);
+  }
 
-//  // After successful SSCMA_Init_I2C and GetInfo
-//
-//  HAL_UART_Transmit(&huart4, (uint8_t*)"Checking model...\r\n", 19, 1000);
-//
-//  SSCMA_GetModelInfo(&sscma);
-//  HAL_UART_Transmit(&huart4, (uint8_t*)"Listing models...\r\n", 19, 1000);
-//  SSCMA_Write(&sscma, "AT+HELP\r\n", 14);
-//
-////  SSCMA_QueryModel(&sscma);
-
-//  HAL_UART_Transmit(&huart4, (uint8_t*)"Checking status...\r\n", 20, 1000);
-//  SSCMA_QueryStatus(&sscma);
-//
-//
-//  HAL_UART_Transmit(&huart4, (uint8_t*)"Selecting model 1...\r\n", 22, 1000);
-//
-//  SSCMA_SelectModel(&sscma, 1);
-//  SSCMA_Invoke(&sscma, 0, false, false);
-//
-//  HAL_UART_Transmit(&huart4, (uint8_t*)"Running inference...\r\n", 22, 1000);
-//
-//  SSCMA_InvokeMulti(&sscma);
-//  SSCMA_Write(&sscma, "AT+INVOKE=0,1,1\r\n", 16);
-
-  SSCMA_SelectModel(&sscma, 1);
-  HAL_Delay(300);
-
-  HAL_UART_Transmit(&huart4, (uint8_t*)"========================================\r\n", 43, 1000);
-  HAL_UART_Transmit(&huart4, (uint8_t*)"Starting main loop...\r\n\r\n", 25, 1000);
-
-
-
+  uart_log("Done. Check Grove AI UART for [I2C_CMD] message.");
+  uart_log("SD card will log to SESSION_XXXX/ALL/ and DETECT/");
 
   /* USER CODE END 2 */
 
@@ -249,125 +220,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
-	    if (SSCMA_InvokeOnce(&sscma) == CMD_OK)
-	    {
-	        if (sscma.box_detected)
-	        {//B9
-	        	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_9);
-	            uart_log("FACE: x=%u y=%u w=%u h=%u score=%u",
-	                sscma.last_box.x, sscma.last_box.y,
-	                sscma.last_box.w, sscma.last_box.h,
-	                sscma.last_box.score);
-
-	            last_face_time = HAL_GetTick();
-
-	            if (!jpeg_saving)
-	            {
-	                if (SSCMA_SaveJPEG(&sscma) == CMD_OK)
-	                {
-	                    jpeg_saving = 1;
-	                    uart_log("JPEG: Saving enabled");
-	                }
-	            }
-	        }
-	        else if (jpeg_saving && (HAL_GetTick() - last_face_time > 3000))
-	        {
-	            SSCMA_CleanActions(&sscma);
-	            jpeg_saving = 0;
-	            uart_log("JPEG: Saving disabled (no face for 3s)");
-	        }
-	    }
-
-	    HAL_Delay(150);
-//	  SSCMA_Fetch(&sscma, NULL);
-//	  HAL_Delay(50);
+      /* Toggle LED every 2s as a heartbeat */
+      HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_9);
+      HAL_Delay(2000);
     /* USER CODE END WHILE */
 
-//    /* USER CODE BEGIN 3 */
-//
-//    // ========================================
-//    // Run AI Inference
-//    // ========================================
-//	HAL_UART_Transmit(&huart4, (uint8_t*)"Invoking...\r\n", 13, 1000);
-//
-//
-//    if (SSCMA_Invoke(&sscma, 1, false, false) == CMD_OK) {//should be 1, true, false
-//
-//        // Check for detected objects (bounding boxes)
-//        if (sscma.boxes_count > 0) {
-//            char msg[150];
-//            snprintf(msg, sizeof(msg), "\r\n[AI] Detected %d object(s):\r\n", sscma.boxes_count);
-//            HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
-//
-//            for (int j = 0; j < sscma.boxes_count && j < 5; j++) {  // Limit to 5 objects
-//                snprintf(msg, sizeof(msg),
-//                        "  [%d] x=%d y=%d w=%d h=%d score=%d target=%d\r\n",
-//                        j + 1,
-//                        sscma.boxes[j].x,
-//                        sscma.boxes[j].y,
-//                        sscma.boxes[j].w,
-//                        sscma.boxes[j].h,
-//                        sscma.boxes[j].score,
-//                        sscma.boxes[j].target);
-//                HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
-//            }
-//        }
-//
-//        // Check for classifications
-//        if (sscma.classes_count > 0) {
-//            char msg[100];
-//            snprintf(msg, sizeof(msg),
-//                    "[AI] Classification: target=%d score=%d\r\n",
-//                    sscma.classes[0].target,
-//                    sscma.classes[0].score);
-//            HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
-//        }
-//
-//        // Show performance metrics
-//        char perf_msg[150];
-//        snprintf(perf_msg, sizeof(perf_msg),
-//                "[PERF] Preprocess=%dms Inference=%dms Postprocess=%dms\r\n",
-//                sscma.perf.preprocess,
-//                sscma.perf.inference,
-//                sscma.perf.postprocess);
-//        HAL_UART_Transmit(&huart4, (uint8_t*)perf_msg, strlen(perf_msg), 1000);
-//    }
-
-
-//
-//    // Small delay between AI inferences
-//    HAL_Delay(10000); //change this back to 500 ????????????????????????????
-//
-//    // ========================================
-//    // I2C Scanner (runs every 2 seconds)
-//    // ========================================
-//    HAL_UART_Transmit(&huart4, StartMSG, sizeof(StartMSG), 1000);
-//
-//    for(i = 1; i < 128; i++)
-//    {
-//        ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i<<1), 3, 5);
-//        if (ret != HAL_OK) {
-//            // No device at this address
-//            HAL_UART_Transmit(&huart4, Space, sizeof(Space), 1000);
-//        }
-//        else if(ret == HAL_OK) {
-//            // Device found!
-//            sprintf((char*)Buffer, "0x%02X", i);
-//            HAL_UART_Transmit(&huart4, Buffer, strlen((char*)Buffer), 1000);
-//        }
-//    }
-//
-//    HAL_UART_Transmit(&huart4, EndMSG, sizeof(EndMSG), 1000);
-//
-//    // ========================================
-//    // Toggle LED
-//    // ========================================
-//    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_9);
-//
-//    // Wait before next cycle
-//    HAL_Delay(1500);
-
+    /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
 }
