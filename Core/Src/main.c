@@ -50,7 +50,7 @@ UART_HandleTypeDef huart4;
 /* USER CODE BEGIN PV */
 
 /* Grove AI I2C comm protocol defines */
-#define GROVE_I2C_ADDR       (0x62 << 1)  /* 7-bit 0x62 → 8-bit 0xC4 */
+#define GROVE_I2C_ADDR       (0x28 << 1)  /* 7-bit 0x28 → 8-bit 0x50 */
 #define I2C_FEATURE_RECORDER 0x80
 #define I2C_CMD_RECORD_START 0x01
 
@@ -185,14 +185,34 @@ int main(void)
   uart_log("  STM32 + Grove AI (i2ccomm SD-log)");
   uart_log("========================================");
 
-  // Check Grove AI is on the bus
-  if (HAL_I2C_IsDeviceReady(&hi2c1, GROVE_I2C_ADDR, 3, 100) == HAL_OK)
+  // I2C bus scan — probe all 7-bit addresses on I2C1
+  uart_log("I2C bus scan on I2C1 (PB7=SDA, PB8=SCL)...");
+  int found_count = 0;
+  for (uint8_t addr = 0x03; addr <= 0x77; addr++)
   {
-      uart_log("I2C: Grove AI found at 0x62");
+      if (HAL_I2C_IsDeviceReady(&hi2c1, addr << 1, 1, 10) == HAL_OK)
+      {
+          uart_log("  I2C device found at 0x%02X", addr);
+          found_count++;
+      }
+  }
+  if (found_count == 0)
+  {
+      uart_log("  NO devices found! Check: SDA/SCL wiring, pull-ups, GND shared");
   }
   else
   {
-      uart_log("I2C: Grove AI NOT found at 0x62 — check wiring!");
+      uart_log("  %d device(s) found", found_count);
+  }
+
+  // Check Grove AI specifically
+  if (HAL_I2C_IsDeviceReady(&hi2c1, GROVE_I2C_ADDR, 3, 100) == HAL_OK)
+  {
+      uart_log("I2C: Grove AI found at 0x28");
+  }
+  else
+  {
+      uart_log("I2C: Grove AI NOT found at 0x28 — check wiring!");
   }
 
   // Give Grove AI time to finish booting (SD mount, model load, camera init)
