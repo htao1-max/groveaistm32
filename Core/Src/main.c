@@ -50,7 +50,7 @@ UART_HandleTypeDef huart4;
 /* USER CODE BEGIN PV */
 
 /* Grove AI I2C comm protocol defines */
-#define GROVE_I2C_ADDR       (0x28 << 1)  /* 7-bit 0x28 → 8-bit 0x50 */
+#define GROVE_I2C_ADDR       (0x62 << 1)  /* 7-bit 0x62 → 8-bit 0xC4 */
 #define I2C_FEATURE_RECORDER 0x80
 #define I2C_CMD_RECORD_START 0x01
 
@@ -185,6 +185,8 @@ int main(void)
   uart_log("  STM32 + Grove AI (i2ccomm SD-log)");
   uart_log("========================================");
 
+  HAL_Delay(5000);
+
   // I2C bus scan — probe all 7-bit addresses on I2C1
   uart_log("I2C bus scan on I2C1 (PB7=SDA, PB8=SCL)...");
   int found_count = 0;
@@ -208,11 +210,11 @@ int main(void)
   // Check Grove AI specifically
   if (HAL_I2C_IsDeviceReady(&hi2c1, GROVE_I2C_ADDR, 3, 100) == HAL_OK)
   {
-      uart_log("I2C: Grove AI found at 0x28");
+      uart_log("I2C: Grove AI found at 0x62");
   }
   else
   {
-      uart_log("I2C: Grove AI NOT found at 0x28 — check wiring!");
+      uart_log("I2C: Grove AI NOT found at 0x62 — check wiring!");
   }
 
   // Give Grove AI time to finish booting (SD mount, model load, camera init)
@@ -442,16 +444,26 @@ static void MX_UART4_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_15, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PC15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_15;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PB9 */
   GPIO_InitStruct.Pin = GPIO_PIN_9;
@@ -460,8 +472,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -482,8 +494,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
