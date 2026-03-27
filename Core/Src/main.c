@@ -50,7 +50,7 @@ UART_HandleTypeDef huart4;
 /* USER CODE BEGIN PV */
 
 /* Grove AI I2C comm protocol defines */
-#define GROVE_I2C_ADDR       (0x62 << 1)  /* 7-bit 0x62 → 8-bit 0xC4 */
+#define GROVE_I2C_ADDR       (0x28 << 1)  /* 7-bit 0x28 → 8-bit 0x50 */
 #define I2C_FEATURE_RECORDER 0x80
 #define I2C_CMD_RECORD_START 0x01
 
@@ -99,8 +99,8 @@ static HAL_StatusTypeDef grove_start_recording(int threshold)
         pkt[4] = (uint8_t)threshold;
     }
 
-    pkt[2] = payload_len & 0xFF;        /* payload len LSB */
-    pkt[3] = (payload_len >> 8) & 0xFF;  /* payload len MSB */
+    pkt[2] = (payload_len >> 8) & 0xFF;  /* payload len MSB */
+    pkt[3] = payload_len & 0xFF;         /* payload len LSB */
 
     total = 4 + payload_len;
 
@@ -185,7 +185,7 @@ int main(void)
   uart_log("  STM32 + Grove AI (i2ccomm SD-log)");
   uart_log("========================================");
 
-  HAL_Delay(5000);
+  HAL_Delay(15000);
 
   // I2C bus scan — probe all 7-bit addresses on I2C1
   uart_log("I2C bus scan on I2C1 (PB7=SDA, PB8=SCL)...");

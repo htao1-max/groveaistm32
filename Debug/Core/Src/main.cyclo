@@ -2,9 +2,9 @@
 ../Core/Src/main.c:78:26:grove_start_recording	3
 ../Core/Src/main.c:131:13:uart_log	2
 ../Core/Src/main.c:152:5:main	6
-../Core/Src/main.c:258:6:SystemClock_Config	3
-../Core/Src/main.c:299:13:MX_I2C1_Init	4
-../Core/Src/main.c:347:13:MX_I2C2_Init	4
-../Core/Src/main.c:395:13:MX_UART4_Init	5
-../Core/Src/main.c:443:13:MX_GPIO_Init	1
-../Core/Src/main.c:476:6:Error_Handler	1
+../Core/Src/main.c:259:6:SystemClock_Config	3
+../Core/Src/main.c:300:13:MX_I2C1_Init	4
+../Core/Src/main.c:348:13:MX_I2C2_Init	4
+../Core/Src/main.c:396:13:MX_UART4_Init	5
+../Core/Src/main.c:444:13:MX_GPIO_Init	1
+../Core/Src/main.c:487:6:Error_Handler	1
