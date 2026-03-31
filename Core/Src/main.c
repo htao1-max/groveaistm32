@@ -154,6 +154,7 @@ int main(void)
   HAL_UART_Transmit(&huart4, (uint8_t*)msg, strlen(msg), 1000);
 
 
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 
   // Welcome message
   HAL_UART_Transmit(&huart4, (uint8_t*)"\r\n========================================\r\n", 43, 1000);
@@ -161,6 +162,25 @@ int main(void)
   HAL_UART_Transmit(&huart4, (uint8_t*)"========================================\r\n", 43, 1000);
   uart_log("BOOT: System started");
 
+
+
+  /*-[ I2C Bus Scanning ]-*/
+  HAL_UART_Transmit(&huart4, StartMSG, sizeof(StartMSG), 10000);
+  for(i=1; i<128; i++)
+  {
+	  ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i<<1), 3, 5);
+	  if (ret != HAL_OK) /* No ACK Received At That Address */
+	  {
+		  HAL_UART_Transmit(&huart4, Space, sizeof(Space), 10000);
+	  }
+	  else if(ret == HAL_OK)
+	  {
+		  sprintf(Buffer, "0x%X", i);
+		  HAL_UART_Transmit(&huart4, Buffer, sizeof(Buffer), 10000);
+	  }
+  }
+  HAL_UART_Transmit(&huart4, EndMSG, sizeof(EndMSG), 10000);
+  /*--[ Scanning Done ]--*/
 
 //  char msg[50];
 //  sprintf(msg, "SysTick count: %lu\r\n", systick_counter);
@@ -284,7 +304,7 @@ int main(void)
 //	  HAL_Delay(50);
     /* USER CODE END WHILE */
 
-//    /* USER CODE BEGIN 3 */
+    /* USER CODE BEGIN 3 */
 //
 //    // ========================================
 //    // Run AI Inference
@@ -528,7 +548,7 @@ static void MX_UART4_Init(void)
   huart4.Init.WordLength = UART_WORDLENGTH_8B;
   huart4.Init.StopBits = UART_STOPBITS_1;
   huart4.Init.Parity = UART_PARITY_NONE;
-  huart4.Init.Mode = UART_MODE_TX;
+  huart4.Init.Mode = UART_MODE_TX_RX;
   huart4.Init.HwFlowCtl = UART_HWCONTROL_NONE;
   huart4.Init.OverSampling = UART_OVERSAMPLING_16;
   huart4.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
@@ -564,16 +584,26 @@ static void MX_UART4_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_15, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PC15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_15;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PB9 */
   GPIO_InitStruct.Pin = GPIO_PIN_9;
@@ -582,8 +612,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -604,8 +634,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.

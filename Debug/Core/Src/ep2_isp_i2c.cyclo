@@ -1,0 +1,11 @@
+../Core/Src/ep2_isp_i2c.c:21:13:dbg	1
+../Core/Src/ep2_isp_i2c.c:27:26:i2c_write	1
+../Core/Src/ep2_isp_i2c.c:37:26:i2c_reg_read	1
+../Core/Src/ep2_isp_i2c.c:49:13:i2c_burst_write	2
+../Core/Src/ep2_isp_i2c.c:64:13:i2c_single_write	6
+../Core/Src/ep2_isp_i2c.c:98:17:i2c_single_read	7
+../Core/Src/ep2_isp_i2c.c:139:6:ep2_isp_init	1
+../Core/Src/ep2_isp_i2c.c:145:6:ep2_probe_device	4
+../Core/Src/ep2_isp_i2c.c:156:6:ep2_isp_begin	1
+../Core/Src/ep2_isp_i2c.c:171:6:ep2_isp_end	1
+../Core/Src/ep2_isp_i2c.c:184:5:ep2_isp_write_chunk	8

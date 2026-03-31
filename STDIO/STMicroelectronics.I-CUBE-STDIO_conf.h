@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2025 STMicroelectronics.
+  * Copyright (c) 2026 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -27,11 +27,11 @@
 
 /**
 	MiddleWare name : STMicroelectronics.I-CUBE-STDIO.1.5.0
-	MiddleWare fileName : ./STMicroelectronics.I-CUBE-STDIO_conf.h
+	MiddleWare fileName : STMicroelectronics.I-CUBE-STDIO_conf.h
 	MiddleWare version :
 */
 /*---------- STDIN_UART_HANDLER  -----------*/
-#define STDIN_UART_HANDLER      huart4
+#define STDIN_UART_HANDLER      huart1
 
 /*---------- STDIN_USBD_FS_HANDLER  -----------*/
 #define STDIN_USBD_FS_HANDLER      hUsbDeviceFS
@@ -46,7 +46,7 @@
 #define STDIN_USBH_HS_HANDLER      hUsbHostHS
 
 /*---------- STDOUT_UART_HANDLER  -----------*/
-#define STDOUT_UART_HANDLER      huart4
+#define STDOUT_UART_HANDLER      huart1
 
 /*---------- STDOUT_USBD_FS_HANDLER  -----------*/
 #define STDOUT_USBD_FS_HANDLER      hUsbDeviceFS

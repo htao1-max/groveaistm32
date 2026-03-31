@@ -2,6 +2,7 @@
 "./Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA.o"
 "./Core/Seeed_Arduino_SSCMA/src/Seeed_Arduino_SSCMA1.o"
 "./Core/Src/Seeed_test.o"
+"./Core/Src/ep2_isp_i2c.o"
 "./Core/Src/main.o"
 "./Core/Src/stm32g4xx_hal_msp.o"
 "./Core/Src/stm32g4xx_it.o"
