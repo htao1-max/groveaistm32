@@ -50,7 +50,7 @@ UART_HandleTypeDef huart4;
 /* USER CODE BEGIN PV */
 
 /* Grove AI I2C comm protocol defines */
-#define GROVE_I2C_ADDR       (0x28 << 1)  /* 7-bit 0x28 → 8-bit 0x50 */
+#define GROVE_I2C_ADDR       (0x62 << 1)  /* 7-bit 0x62 → 8-bit 0xC4 (Himax i2ccomm slave 0) */
 #define I2C_FEATURE_RECORDER 0x80
 #define I2C_CMD_RECORD_START 0x01
 
@@ -99,8 +99,8 @@ static HAL_StatusTypeDef grove_start_recording(int threshold)
         pkt[4] = (uint8_t)threshold;
     }
 
-    pkt[2] = (payload_len >> 8) & 0xFF;  /* payload len MSB */
-    pkt[3] = payload_len & 0xFF;         /* payload len LSB */
+    pkt[2] = payload_len & 0xFF;         /* payload len LSB (offset 2) */
+    pkt[3] = (payload_len >> 8) & 0xFF;  /* payload len MSB (offset 3) */
 
     total = 4 + payload_len;
 
@@ -184,57 +184,66 @@ int main(void)
   uart_log("========================================");
   uart_log("  STM32 + Grove AI (i2ccomm SD-log)");
   uart_log("========================================");
+  uart_log("Target i2ccomm slave addr: 0x%02X (7-bit)", GROVE_I2C_ADDR >> 1);
 
+  uart_log("Waiting 15s for Grove AI to boot...");
   HAL_Delay(15000);
 
   // I2C bus scan — probe all 7-bit addresses on I2C1
-  uart_log("I2C bus scan on I2C1 (PB7=SDA, PB8=SCL)...");
+  uart_log("--- I2C bus scan on I2C1 (PB7=SDA, PB8=SCL) ---");
   int found_count = 0;
+  int found_0x62 = 0;
   for (uint8_t addr = 0x03; addr <= 0x77; addr++)
   {
       if (HAL_I2C_IsDeviceReady(&hi2c1, addr << 1, 1, 10) == HAL_OK)
       {
-          uart_log("  I2C device found at 0x%02X", addr);
+          uart_log("  0x%02X  ACK%s", addr,
+                   (addr == (GROVE_I2C_ADDR >> 1)) ? "  <-- i2ccomm target" : "");
           found_count++;
+          if (addr == (GROVE_I2C_ADDR >> 1)) found_0x62 = 1;
       }
   }
-  if (found_count == 0)
+  uart_log("  %d device(s) found", found_count);
+
+  if (!found_0x62)
   {
-      uart_log("  NO devices found! Check: SDA/SCL wiring, pull-ups, GND shared");
-  }
-  else
-  {
-      uart_log("  %d device(s) found", found_count);
+      uart_log("WARNING: 0x62 not found in scan! Retrying every 2s...");
+      for (int retry = 0; retry < 10 && !found_0x62; retry++)
+      {
+          HAL_Delay(2000);
+          if (HAL_I2C_IsDeviceReady(&hi2c1, GROVE_I2C_ADDR, 3, 100) == HAL_OK)
+          {
+              uart_log("  0x62 appeared on retry %d", retry + 1);
+              found_0x62 = 1;
+          }
+          else
+          {
+              uart_log("  retry %d: 0x62 still NACK", retry + 1);
+          }
+      }
+      if (!found_0x62)
+      {
+          uart_log("FAIL: 0x62 never responded.");
+          uart_log("  Check: SDA/SCL wires go to Grove connector (not camera I2C)");
+          uart_log("  Check: GND is shared between STM32 and Grove AI");
+          uart_log("  Note: 0x28 = OV5647 camera, NOT the i2ccomm slave");
+      }
   }
 
-  // Check Grove AI specifically
-  if (HAL_I2C_IsDeviceReady(&hi2c1, GROVE_I2C_ADDR, 3, 100) == HAL_OK)
+  if (found_0x62)
   {
-      uart_log("I2C: Grove AI found at 0x62");
+      // Send start-recording command with 50% threshold
+      uart_log("Sending start-recording (threshold=50%%)...");
+      HAL_StatusTypeDef rc = grove_start_recording(50);
+      if (rc == HAL_OK)
+      {
+          uart_log("I2C TX OK — check Grove AI UART for [I2C_CMD] message");
+      }
+      else
+      {
+          uart_log("I2C TX FAILED (HAL rc=%d)", rc);
+      }
   }
-  else
-  {
-      uart_log("I2C: Grove AI NOT found at 0x62 — check wiring!");
-  }
-
-  // Give Grove AI time to finish booting (SD mount, model load, camera init)
-  uart_log("Waiting 5s for Grove AI to finish init...");
-  HAL_Delay(5000);
-
-  // Send start-recording command with 50% threshold
-  uart_log("Sending start-recording (threshold=50%%)...");
-  HAL_StatusTypeDef rc = grove_start_recording(50);
-  if (rc == HAL_OK)
-  {
-      uart_log("I2C TX OK — recording should start on Grove AI");
-  }
-  else
-  {
-      uart_log("I2C TX FAILED (rc=%d)", rc);
-  }
-
-  uart_log("Done. Check Grove AI UART for [I2C_CMD] message.");
-  uart_log("SD card will log to SESSION_XXXX/ALL/ and DETECT/");
 
   /* USER CODE END 2 */
 
