@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <himax_sdk.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
