@@ -1,0 +1,3 @@
+../Core/Src/himax_sdk.c:67:6:uart_log	184	static
+../Core/Src/himax_sdk.c:82:10:initForHimax	32	static
+../Core/Src/himax_sdk.c:138:10:startRecordingForHimax	32	static

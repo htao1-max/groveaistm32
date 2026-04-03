@@ -1,0 +1,3 @@
+../Core/Src/himax_sdk.c:67:6:uart_log	1
+../Core/Src/himax_sdk.c:82:10:initForHimax	7
+../Core/Src/himax_sdk.c:138:10:startRecordingForHimax	5
