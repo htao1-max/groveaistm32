@@ -86,8 +86,8 @@ uint16_t initForHimax(void)
 	uart_log("========================================");
 	uart_log("Target i2ccomm slave addr: 0x%02X (7-bit)", GROVE_I2C_ADDR >> 1);
 
-	uart_log("Waiting 15s for Grove AI to boot...");
-	HAL_Delay(15000);
+	uart_log("Waiting 5s for Grove AI to boot...");
+	HAL_Delay(5000);
 
 	// I2C bus scan — probe all 7-bit addresses on I2C1
 	uart_log("--- I2C bus scan on I2C1 (PB7=SDA, PB8=SCL) ---");
