@@ -1,10 +1,4 @@
-../Core/Src/main.c:58:17:crc16_ccitt	24	static
-../Core/Src/main.c:78:26:grove_start_recording	40	static
 ../Core/Src/main.c:131:13:uart_log	184	static
-../Core/Src/main.c:152:5:main	32	static
-../Core/Src/main.c:268:6:SystemClock_Config	88	static
-../Core/Src/main.c:309:13:MX_I2C1_Init	8	static
-../Core/Src/main.c:357:13:MX_I2C2_Init	8	static
-../Core/Src/main.c:405:13:MX_UART4_Init	8	static
-../Core/Src/main.c:453:13:MX_GPIO_Init	40	static
-../Core/Src/main.c:496:6:Error_Handler	4	static,ignoring_inline_asm
+../Core/Src/main.c:268:6:SystemClock_Config	88	static,ignoring_inline_asm
+../Core/Src/main.c:152:5:main	72	static,ignoring_inline_asm
+../Core/Src/main.c:496:6:Error_Handler	0	static,ignoring_inline_asm
