@@ -783,7 +783,7 @@ uint16_t initForHimax(void)
  8000848:	68f9      	ldr	r1, [r7, #12]
  800084a:	482c      	ldr	r0, [pc, #176]	@ (80008fc <initForHimax+0x140>)
  800084c:	f7ff ff5e 	bl	800070c <uart_log>
-
+	//remove i2cscan
 	if (!found_0x62)
  8000850:	68bb      	ldr	r3, [r7, #8]
  8000852:	2b00      	cmp	r3, #0

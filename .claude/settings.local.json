@@ -4,7 +4,12 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:github.com)",
       "Bash(gh api:*)",
-      "Bash(gh search:*)"
+      "Bash(gh search:*)",
+      "Read(//c/Users/frank/Downloads/**)",
+      "Bash(pip show:*)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\frank\\STM32CubeIDE\\workspace_1.19.0\\stm32ide\\Seeed_Grove_Vision_AI_Module_V2"
     ]
   }
 }

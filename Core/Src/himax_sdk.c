@@ -104,7 +104,7 @@ uint16_t initForHimax(void)
 	  }
 	}
 	uart_log("  %d device(s) found", found_count);
-
+	//remove i2cscan
 	if (!found_0x62)
 	{
 	  uart_log("WARNING: 0x62 not found in scan! Retrying every 2s...");
