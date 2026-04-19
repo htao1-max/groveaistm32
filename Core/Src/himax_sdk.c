@@ -26,42 +26,51 @@ static uint16_t crc16_ccitt(const uint8_t *buf, uint16_t len)
     return crc;
 }
 
-static HAL_StatusTypeDef grove_start_recording(int threshold)
+/*
+ * Generic Himax i2ccomm sender.
+ * Packet layout:
+ *   [0] Feature
+ *   [1] Command
+ *   [2] Payload length LSB
+ *   [3] Payload length MSB
+ *   [4..4+N-1] Payload (optional)
+ *   [N] CRC16 LSB
+ *   [N+1] CRC16 MSB
+ */
+static HAL_StatusTypeDef grove_send_cmd(uint8_t feature,
+                                        uint8_t cmd,
+                                        const uint8_t *payload,
+                                        uint16_t plen)
 {
-    /*
-     * Packet layout (Himax i2ccomm):
-     *   [0] Feature
-     *   [1] Command
-     *   [2] Payload length LSB
-     *   [3] Payload length MSB
-     *   [4..4+N-1] Payload (optional)
-     *   [N] CRC16 LSB
-     *   [N+1] CRC16 MSB
-     */
-    uint8_t pkt[8];  /* max: 4 header + 1 payload + 2 crc + spare */
-    uint16_t payload_len = 0;
-    uint16_t total;
+    /* Max packet = 4 header + 256 payload + 2 crc = 262 bytes. */
+    uint8_t pkt[262];
+    if (plen > 256) return HAL_ERROR;
 
-    pkt[0] = I2C_FEATURE_RECORDER;  /* feature */
-    pkt[1] = I2C_CMD_RECORD_START;  /* command */
+    pkt[0] = feature;
+    pkt[1] = cmd;
+    pkt[2] = plen & 0xFF;
+    pkt[3] = (plen >> 8) & 0xFF;
 
-    if (threshold >= 0 && threshold <= 100) {
-        payload_len = 1;
-        pkt[4] = (uint8_t)threshold;
+    if (plen > 0 && payload != NULL) {
+        for (uint16_t i = 0; i < plen; i++) pkt[4 + i] = payload[i];
     }
 
-    pkt[2] = payload_len & 0xFF;         /* payload len LSB (offset 2) */
-    pkt[3] = (payload_len >> 8) & 0xFF;  /* payload len MSB (offset 3) */
-
-    total = 4 + payload_len;
-
-    /* Append CRC-16 over header + payload */
+    uint16_t total = 4 + plen;
     uint16_t crc = crc16_ccitt(pkt, total);
-    pkt[total]     = crc & 0xFF;        /* CRC LSB */
-    pkt[total + 1] = (crc >> 8) & 0xFF; /* CRC MSB */
+    pkt[total]     = crc & 0xFF;
+    pkt[total + 1] = (crc >> 8) & 0xFF;
     total += 2;
 
     return HAL_I2C_Master_Transmit(&hi2c1, GROVE_I2C_ADDR, pkt, total, 1000);
+}
+
+static HAL_StatusTypeDef grove_start_recording(int threshold)
+{
+    if (threshold >= 0 && threshold <= 100) {
+        uint8_t payload = (uint8_t)threshold;
+        return grove_send_cmd(I2C_FEATURE_RECORDER, I2C_CMD_RECORD_START, &payload, 1);
+    }
+    return grove_send_cmd(I2C_FEATURE_RECORDER, I2C_CMD_RECORD_START, NULL, 0);
 }
 
 void uart_log(const char *fmt, ...)
