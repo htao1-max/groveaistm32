@@ -7,6 +7,7 @@
 #include "himax_sdk.h"
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 
 extern I2C_HandleTypeDef hi2c1;
 extern UART_HandleTypeDef huart4;
@@ -159,4 +160,42 @@ uint16_t startRecordingForHimax(void)
 	  uart_log("I2C TX FAILED (HAL rc=%d)", rc);
 	  return 0;
 	}
+}
+
+void logToHimax(const char *tag, const char *fmt, ...)
+{
+    if (tag == NULL || fmt == NULL) return;
+
+    /* Format the message (truncates cleanly at 200 chars). */
+    char msg[201];
+    va_list ap;
+    va_start(ap, fmt);
+    int n = vsnprintf(msg, sizeof(msg), fmt, ap);
+    va_end(ap);
+    if (n < 0) return;
+
+    /* Tag length cap (15 + NUL). */
+    size_t tag_len = strnlen(tag, 16);
+    if (tag_len >= 16) {
+        uart_log("[logToHimax] tag too long (max 15)");
+        return;
+    }
+
+    /* Build payload: tag\0msg\0 */
+    uint8_t payload[220];
+    size_t off = 0;
+    memcpy(payload + off, tag, tag_len); off += tag_len;
+    payload[off++] = '\0';
+    size_t msg_len = strnlen(msg, sizeof(msg));
+    memcpy(payload + off, msg, msg_len); off += msg_len;
+    payload[off++] = '\0';
+
+    HAL_StatusTypeDef rc = grove_send_cmd(I2C_FEATURE_LOG,
+                                          I2C_CMD_LOG_WRITE,
+                                          payload, (uint16_t)off);
+    if (rc != HAL_OK) {
+        uart_log("[logToHimax] I2C TX failed rc=%d", rc);
+    } else {
+        uart_log("[->himax] [%s] %s", tag, msg);
+    }
 }
