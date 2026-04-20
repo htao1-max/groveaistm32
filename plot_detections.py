@@ -10,13 +10,15 @@ Each det_XXXX.jpg should have a matching det_XXXX.txt with lines:
     <class_idx> <confidence> <x> <y> <width> <height>
 """
 
-import argparse
 import os
 import glob
 
-from PIL import Image
+from PIL import Image, ImageFile
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+
+# Allow loading truncated JPEGs (common with SD-card captures)
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 # Distinct colors for up to 20 classes
 COLORS = [
@@ -36,15 +38,15 @@ def parse_annotation(txt_path):
             if not line:
                 continue
             parts = line.split()
-            if len(parts) < 6:
+            if len(parts) < 5:
                 continue
+            # Format: <class_idx> <x> <y> <w> <h>
             detections.append({
                 "class_idx": int(parts[0]),
-                "confidence": float(parts[1]),
-                "x": int(parts[2]),
-                "y": int(parts[3]),
-                "w": int(parts[4]),
-                "h": int(parts[5]),
+                "x": int(parts[1]),
+                "y": int(parts[2]),
+                "w": int(parts[3]),
+                "h": int(parts[4]),
             })
     return detections
 
@@ -62,7 +64,7 @@ def plot_image(img_path, detections, save_path=None):
             linewidth=2, edgecolor=color, facecolor="none"
         )
         ax.add_patch(rect)
-        label = f"cls:{det['class_idx']} {det['confidence']:.2f}"
+        label = f"cls:{det['class_idx']}"
         ax.text(
             det["x"], det["y"] - 4, label,
             color="white", fontsize=9, fontweight="bold",
@@ -81,17 +83,16 @@ def plot_image(img_path, detections, save_path=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Plot YOLO detections on images")
-    parser.add_argument("detect_dir", help="Path to SESSION_XXXX/DETECT/ folder")
-    parser.add_argument("--save", default=None, help="Output directory for annotated images")
-    args = parser.parse_args()
+    # Hardcoded paths
+    detect_dir = r"C:\Users\frank\Downloads\SESSION_0036\SESSION_0036\DETECT"
+    save_dir = r"C:\Users\frank\Downloads\SESSION_0036\SESSION_0036\DETECT\plotted"
 
-    if args.save and not os.path.exists(args.save):
-        os.makedirs(args.save)
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
 
-    jpg_files = sorted(glob.glob(os.path.join(args.detect_dir, "det_*.jpg")))
+    jpg_files = sorted(glob.glob(os.path.join(detect_dir, "det_*.jpg")))
     if not jpg_files:
-        print(f"No det_*.jpg files found in {args.detect_dir}")
+        print(f"No det_*.jpg files found in {detect_dir}")
         return
 
     for jpg_path in jpg_files:
@@ -105,14 +106,10 @@ def main():
         detections = parse_annotation(txt_path)
         print(f"{os.path.basename(jpg_path)}: {len(detections)} detection(s)")
 
-        save_path = None
-        if args.save:
-            save_path = os.path.join(args.save, os.path.basename(jpg_path))
-
+        save_path = os.path.join(save_dir, os.path.basename(jpg_path))
         plot_image(jpg_path, detections, save_path)
 
-    if args.save:
-        print(f"Annotated images saved to {args.save}")
+    print(f"Annotated images saved to {save_dir}")
 
 
 if __name__ == "__main__":

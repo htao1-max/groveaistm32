@@ -101,18 +101,19 @@ int main(void)
 
   if (initForHimax() == 1)
   {
-	  if (startRecordingForHimax() == 1) {
-		  uart_log("SUCCESS : INIT and StartRecording success");
-	  } else {
-		  uart_log("FAIL : INIT success but StartRecording failed");
-	  }
+//	  if (startRecordingForHimax() == 1) {
+//		  uart_log("SUCCESS : INIT and StartRecording success");
+//	  } else {
+//		  uart_log("FAIL : INIT success but StartRecording failed");
+//	  }
+	  uart_log("testing log");
   }
 
   /* E2E test: write a few lines to the Himax SD session.log. */
   logToHimax("STM32", "hello from stm32, tick=%lu", HAL_GetTick());
-  HAL_Delay(100);
+  HAL_Delay(1000);
   logToHimax("STM32", "second line, counter=%d", 42);
-  HAL_Delay(100);
+  HAL_Delay(1000);
   logToHimax("STM32", "formatted float: %.2f", 3.14159f);
 
   /* USER CODE END 2 */

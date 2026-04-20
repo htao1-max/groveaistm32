@@ -1,5 +1,7 @@
-../Core/Src/himax_sdk.c:14:17:crc16_ccitt	4
-../Core/Src/himax_sdk.c:29:26:grove_start_recording	3
-../Core/Src/himax_sdk.c:67:6:uart_log	2
-../Core/Src/himax_sdk.c:82:10:initForHimax	10
-../Core/Src/himax_sdk.c:138:10:startRecordingForHimax	2
+../Core/Src/himax_sdk.c:15:17:crc16_ccitt	4
+../Core/Src/himax_sdk.c:41:26:grove_send_cmd	5
+../Core/Src/himax_sdk.c:68:26:grove_start_recording	3
+../Core/Src/himax_sdk.c:77:6:uart_log	2
+../Core/Src/himax_sdk.c:92:10:initForHimax	10
+../Core/Src/himax_sdk.c:148:10:startRecordingForHimax	2
+../Core/Src/himax_sdk.c:165:6:logToHimax	6

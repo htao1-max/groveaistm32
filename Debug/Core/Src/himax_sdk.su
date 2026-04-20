@@ -1,5 +1,7 @@
-../Core/Src/himax_sdk.c:14:17:crc16_ccitt	24	static
-../Core/Src/himax_sdk.c:29:26:grove_start_recording	40	static
-../Core/Src/himax_sdk.c:67:6:uart_log	184	static
-../Core/Src/himax_sdk.c:82:10:initForHimax	24	static
-../Core/Src/himax_sdk.c:138:10:startRecordingForHimax	16	static
+../Core/Src/himax_sdk.c:15:17:crc16_ccitt	24	static
+../Core/Src/himax_sdk.c:41:26:grove_send_cmd	304	static
+../Core/Src/himax_sdk.c:68:26:grove_start_recording	24	static
+../Core/Src/himax_sdk.c:77:6:uart_log	184	static
+../Core/Src/himax_sdk.c:92:10:initForHimax	24	static
+../Core/Src/himax_sdk.c:148:10:startRecordingForHimax	16	static
+../Core/Src/himax_sdk.c:165:6:logToHimax	468	static

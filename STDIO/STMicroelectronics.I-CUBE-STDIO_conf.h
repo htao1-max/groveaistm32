@@ -31,7 +31,7 @@
 	MiddleWare version :
 */
 /*---------- STDIN_UART_HANDLER  -----------*/
-#define STDIN_UART_HANDLER      huart1
+#define STDIN_UART_HANDLER      huart4
 
 /*---------- STDIN_USBD_FS_HANDLER  -----------*/
 #define STDIN_USBD_FS_HANDLER      hUsbDeviceFS
@@ -46,7 +46,7 @@
 #define STDIN_USBH_HS_HANDLER      hUsbHostHS
 
 /*---------- STDOUT_UART_HANDLER  -----------*/
-#define STDOUT_UART_HANDLER      huart1
+#define STDOUT_UART_HANDLER      huart4
 
 /*---------- STDOUT_USBD_FS_HANDLER  -----------*/
 #define STDOUT_USBD_FS_HANDLER      hUsbDeviceFS
