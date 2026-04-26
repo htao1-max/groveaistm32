@@ -162,6 +162,31 @@ uint16_t startRecordingForHimax(void)
 	}
 }
 
+/* -----------------------------------------------------------------------
+ * Telemetry batch state and LE pack helper
+ * -------------------------------------------------------------------- */
+static uint8_t s_tlm_batch[TLM_BATCH_SIZE * TLM_SAMPLE_BYTES];
+static uint8_t s_tlm_count = 0;
+
+/* Pack one telemetry_t into 44 little-endian bytes at dst. STM32G4 is
+ * little-endian, so memcpy of each scalar is correct on this MCU. We
+ * still pack field-by-field (rather than memcpy-ing the struct whole)
+ * because the C struct layout has padding/alignment that does NOT match
+ * the wire format — the wire format is exactly 44 bytes with no padding. */
+static void tlm_pack_sample_le(uint8_t *dst, const telemetry_t *t)
+{
+    size_t off = 0;
+    for (int i = 0; i < 4; i++) {
+        memcpy(dst + off, &t->q[i], 4); off += 4;
+    }
+    memcpy(dst + off, &t->temp_c, 4); off += 4;
+    memcpy(dst + off, &t->vbat,   4); off += 4;
+    for (int i = 0; i < 4; i++) {
+        memcpy(dst + off, &t->vmotor[i], 4); off += 4;
+    }
+    memcpy(dst + off, &t->stm32_tick_ms, 4); /* off += 4; final */
+}
+
 void logToHimax(const char *tag, const char *fmt, ...)
 {
     if (tag == NULL || fmt == NULL) return;
@@ -198,4 +223,34 @@ void logToHimax(const char *tag, const char *fmt, ...)
     } else {
         uart_log("[->himax] [%s] %s", tag, msg);
     }
+}
+
+void logTelemetryToHimax(telemetry_t *t)
+{
+    if (t == NULL) return;
+
+    /* Stamp tick at call time. */
+    t->stm32_tick_ms = HAL_GetTick();
+
+    /* Pack into the next slot in the batch. */
+    tlm_pack_sample_le(&s_tlm_batch[s_tlm_count * TLM_SAMPLE_BYTES], t);
+    s_tlm_count++;
+
+    if (s_tlm_count < TLM_BATCH_SIZE) return;
+
+    /* Batch full — flush one I2C frame. */
+    HAL_StatusTypeDef rc = grove_send_cmd(I2C_FEATURE_TLM,
+                                          I2C_CMD_TLM_WRITE,
+                                          s_tlm_batch,
+                                          (uint16_t)(TLM_BATCH_SIZE * TLM_SAMPLE_BYTES));
+    if (rc != HAL_OK) {
+        uart_log("[logTlmToHimax] I2C TX failed rc=%d", rc);
+    } else {
+        uart_log("[->himax tlm] flushed %u samples (last tick=%lu)",
+                 (unsigned)TLM_BATCH_SIZE, (unsigned long)t->stm32_tick_ms);
+    }
+
+    /* Reset batch regardless of TX outcome — drop the 4 samples on
+     * failure rather than re-flushing the same payload next time. */
+    s_tlm_count = 0;
 }
