@@ -117,6 +117,28 @@ int main(void)
   HAL_Delay(1000);
   logToHimax("STM32", "formatted float: %.2f", 3.14159f);
 
+#define DEBUG_LOGTLM_SMOKE   /* remove for production builds */
+#ifdef DEBUG_LOGTLM_SMOKE
+  HAL_Delay(500);
+  uart_log("--- logTlmToHimax smoke: 8 samples (expect 2 I2C frames) ---");
+  for (int i = 0; i < 8; i++) {
+      telemetry_t t = {0};
+      t.q[0] = 0.1f * (float)i;
+      t.q[1] = 0.2f * (float)i;
+      t.q[2] = 0.3f * (float)i;
+      t.q[3] = 0.4f * (float)i;
+      t.temp_c     = 20.0f + (float)i;
+      t.vbat       = 11.5f + 0.05f * (float)i;
+      t.vmotor[0]  = 3.30f + 0.01f * (float)i;
+      t.vmotor[1]  = 3.31f + 0.01f * (float)i;
+      t.vmotor[2]  = 3.32f + 0.01f * (float)i;
+      t.vmotor[3]  = 3.33f + 0.01f * (float)i;
+      logTelemetryToHimax(&t);
+      HAL_Delay(20);  /* ~50 Hz sample cadence in smoke test */
+  }
+  uart_log("--- logTlmToHimax smoke done ---");
+#endif
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
