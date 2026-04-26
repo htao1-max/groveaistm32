@@ -133,6 +133,11 @@ int main(void)
       t.vmotor[1]  = 3.31f + 0.01f * (float)i;
       t.vmotor[2]  = 3.32f + 0.01f * (float)i;
       t.vmotor[3]  = 3.33f + 0.01f * (float)i;
+      t.imotor[0]  = 0.50f + 0.02f * (float)i;
+      t.imotor[1]  = 0.51f + 0.02f * (float)i;
+      t.imotor[2]  = 0.52f + 0.02f * (float)i;
+      t.imotor[3]  = 0.53f + 0.02f * (float)i;
+      t.depth      = 1.50f + 0.10f * (float)i;
       logTelemetryToHimax(&t);
       HAL_Delay(20);  /* ~50 Hz sample cadence in smoke test */
   }

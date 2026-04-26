@@ -22,13 +22,15 @@
 #define I2C_FEATURE_TLM       0x83
 #define I2C_CMD_TLM_WRITE     0x01
 #define TLM_BATCH_SIZE        4U     /* samples per I2C frame */
-#define TLM_SAMPLE_BYTES      44U    /* 10*float32 + 1*uint32 */
+#define TLM_SAMPLE_BYTES      64U    /* 15*float32 + 1*uint32 */
 
 typedef struct {
     float    q[4];          /* quaternion w,x,y,z */
     float    temp_c;
     float    vbat;
-    float    vmotor[4];     /* motors 1..4 */
+    float    vmotor[4];     /* motor 1..4 voltage  */
+    float    imotor[4];     /* motor 1..4 current  */
+    float    depth;
     uint32_t stm32_tick_ms; /* filled by logTelemetryToHimax() */
 } telemetry_t;
 

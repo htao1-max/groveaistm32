@@ -184,6 +184,10 @@ static void tlm_pack_sample_le(uint8_t *dst, const telemetry_t *t)
     for (int i = 0; i < 4; i++) {
         memcpy(dst + off, &t->vmotor[i], 4); off += 4;
     }
+    for (int i = 0; i < 4; i++) {
+        memcpy(dst + off, &t->imotor[i], 4); off += 4;
+    }
+    memcpy(dst + off, &t->depth, 4); off += 4;
     memcpy(dst + off, &t->stm32_tick_ms, 4); /* off += 4; final */
 }
 
