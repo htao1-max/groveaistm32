@@ -139,7 +139,13 @@ int main(void)
       t.imotor[3]  = 0.53f + 0.02f * (float)i;
       t.depth      = 1.50f + 0.10f * (float)i;
       logTelemetryToHimax(&t);
-      HAL_Delay(20);  /* ~50 Hz sample cadence in smoke test */
+      HAL_Delay(100);  /* widened from 20ms — Himax single-mailbox race
+                        * (see 2026-04-21-sensor-stream-logging-design.md):
+                        * during active recording, JPEG f_write stalls can
+                        * exceed the inter-frame gap and coalesce the I2C
+                        * RX event so only the later frame is seen. 100ms
+                        * per sample ⇒ 400ms between batch flushes, well
+                        * clear of any JPEG stall. */
   }
   uart_log("--- logTlmToHimax smoke done ---");
 #endif
