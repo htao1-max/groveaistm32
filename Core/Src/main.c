@@ -150,6 +150,38 @@ int main(void)
   uart_log("--- logTlmToHimax smoke done ---");
 #endif
 
+/* 30 Hz × 60 s production-rate stress test — verifies Himax RX mailbox
+ * FIFO + bumped TLM ring (spec 2026-04-27-himax-rx-mailbox-fifo-design.md).
+ * Expected: SESSION_XXXX/telemetry.csv has >=1800 rows; Himax UART shows
+ * no [I2CCOMM] dropped or [SDLOG_TLM] dropped lines. */
+//#define DEBUG_LOGTLM_30HZ   /* enable to run; remove for production */
+#ifdef DEBUG_LOGTLM_30HZ
+  HAL_Delay(500);
+  uart_log("--- logTlmToHimax 30Hz x 60s stress (1800 samples) ---");
+  for (int i = 0; i < 1800; i++) {
+      telemetry_t t = {0};
+      t.q[0] = 0.1f * (float)(i % 10);
+      t.q[1] = 0.2f * (float)(i % 10);
+      t.q[2] = 0.3f * (float)(i % 10);
+      t.q[3] = 0.4f * (float)(i % 10);
+      t.temp_c     = 20.0f + (float)(i % 10);
+      t.vbat       = 11.5f + 0.05f * (float)(i % 10);
+      t.vmotor[0]  = 3.30f + 0.01f * (float)(i % 10);
+      t.vmotor[1]  = 3.31f + 0.01f * (float)(i % 10);
+      t.vmotor[2]  = 3.32f + 0.01f * (float)(i % 10);
+      t.vmotor[3]  = 3.33f + 0.01f * (float)(i % 10);
+      t.imotor[0]  = 0.50f + 0.02f * (float)(i % 10);
+      t.imotor[1]  = 0.51f + 0.02f * (float)(i % 10);
+      t.imotor[2]  = 0.52f + 0.02f * (float)(i % 10);
+      t.imotor[3]  = 0.53f + 0.02f * (float)(i % 10);
+      t.depth      = 1.50f + 0.10f * (float)(i % 10);
+      logTelemetryToHimax(&t);
+      HAL_Delay(33);  /* 30 Hz call rate -> 7.5 Hz I2C wire rate
+                       * (logTelemetryToHimax batches 4 samples/frame) */
+  }
+  uart_log("--- logTlmToHimax 30Hz stress done ---");
+#endif
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
