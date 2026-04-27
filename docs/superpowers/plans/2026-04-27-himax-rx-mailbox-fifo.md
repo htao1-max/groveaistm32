@@ -386,6 +386,66 @@ git commit -m "Bump TLM ring to 16 slots; surface mailbox-FIFO drop count"
 
 ---
 
+## Task 4.5: Add STM32-side 30 Hz × 60 s telemetry harness
+
+**Files:**
+- Modify: `C:\Users\frank\STM32CubeIDE\workspace_1.19.0\stm32ide\i2cScan\Core\Src\main.c`
+
+This is the only STM32-side change in the whole effort. It adds a separate compile-time-gated harness next to the existing `DEBUG_LOGTLM_SMOKE` block so Task 5 Step 3 has something concrete to run. Mirrors the existing smoke pattern.
+
+- [ ] **Step 1: Add `DEBUG_LOGTLM_30HZ` block in `main.c`**
+
+In `main.c`, immediately after the closing `#endif` of the existing `DEBUG_LOGTLM_SMOKE` block (around line 151), insert:
+
+```c
+/* 30 Hz × 60 s production-rate stress test — verifies Himax RX mailbox
+ * FIFO + bumped TLM ring (spec 2026-04-27-himax-rx-mailbox-fifo-design.md).
+ * Expected: SESSION_XXXX/telemetry.csv has >=1800 rows; Himax UART shows
+ * no [I2CCOMM] dropped or [SDLOG_TLM] dropped lines. */
+//#define DEBUG_LOGTLM_30HZ   /* enable to run; remove for production */
+#ifdef DEBUG_LOGTLM_30HZ
+  HAL_Delay(500);
+  uart_log("--- logTlmToHimax 30Hz x 60s stress (1800 samples) ---");
+  for (int i = 0; i < 1800; i++) {
+      telemetry_t t = {0};
+      t.q[0] = 0.1f * (float)(i % 10);
+      t.q[1] = 0.2f * (float)(i % 10);
+      t.q[2] = 0.3f * (float)(i % 10);
+      t.q[3] = 0.4f * (float)(i % 10);
+      t.temp_c     = 20.0f + (float)(i % 10);
+      t.vbat       = 11.5f + 0.05f * (float)(i % 10);
+      t.vmotor[0]  = 3.30f + 0.01f * (float)(i % 10);
+      t.vmotor[1]  = 3.31f + 0.01f * (float)(i % 10);
+      t.vmotor[2]  = 3.32f + 0.01f * (float)(i % 10);
+      t.vmotor[3]  = 3.33f + 0.01f * (float)(i % 10);
+      t.imotor[0]  = 0.50f + 0.02f * (float)(i % 10);
+      t.imotor[1]  = 0.51f + 0.02f * (float)(i % 10);
+      t.imotor[2]  = 0.52f + 0.02f * (float)(i % 10);
+      t.imotor[3]  = 0.53f + 0.02f * (float)(i % 10);
+      t.depth      = 1.50f + 0.10f * (float)(i % 10);
+      logTelemetryToHimax(&t);
+      HAL_Delay(33);  /* 30 Hz call rate -> 7.5 Hz I2C wire rate
+                       * (logTelemetryToHimax batches 4 samples/frame) */
+  }
+  uart_log("--- logTlmToHimax 30Hz stress done ---");
+#endif
+```
+
+The block is left disabled by default (`//#define`) — Task 5 Step 3 enables it for a single stress run, then comments it back out.
+
+- [ ] **Step 2: Build (STM32CubeIDE build of i2cScan)**
+
+Open the i2cScan project in STM32CubeIDE and rebuild. Expected: builds clean.
+
+- [ ] **Step 3: Commit (in i2cScan repo)**
+
+```bash
+git add Core/Src/main.c
+git commit -m "Add DEBUG_LOGTLM_30HZ stress harness (1800 samples / 60 s)"
+```
+
+---
+
 ## Task 5: Hardware verification
 
 **Files:** none modified — this task is end-to-end behavioral verification.
