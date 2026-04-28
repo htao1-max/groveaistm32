@@ -99,6 +99,11 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
+  HAL_Delay(2000); //testing only
+
+
+
+
   if (initForHimax() == 1)
   {
       HAL_Delay(500);   /* let i2ccomm slave recover from scan probes */
@@ -154,7 +159,7 @@ int main(void)
  * FIFO + bumped TLM ring (spec 2026-04-27-himax-rx-mailbox-fifo-design.md).
  * Expected: SESSION_XXXX/telemetry.csv has >=1800 rows; Himax UART shows
  * no [I2CCOMM] dropped or [SDLOG_TLM] dropped lines. */
-//#define DEBUG_LOGTLM_30HZ   /* enable to run; remove for production */
+#define DEBUG_LOGTLM_30HZ   /* enable to run; remove for production */
 #ifdef DEBUG_LOGTLM_30HZ
   HAL_Delay(500);
   uart_log("--- logTlmToHimax 30Hz x 60s stress (1800 samples) ---");
